@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/darts-detector/dart-event.schema.json",
+  "title": "Dart Event",
+  "description": "Schema for the Dart, CalibrationStatus, CameraStatus, and Error events emitted by the darts detector. Locked at end of Phase 4. See docs/API_AND_WEBSOCKET_CONTRACT.md for prose contract and docs/DECISIONS.md D-006 for versioning policy.",
+  "oneOf": [
+    { "$ref": "#/$defs/DartEvent" },
+    { "$ref": "#/$defs/CalibrationStatusEvent" },
+    { "$ref": "#/$defs/CameraStatusEvent" },
+    { "$ref": "#/$defs/ErrorEvent" },
+    { "$ref": "#/$defs/TurnStateEvent" }
+  ],
+  "$defs": {
+    "SemverString": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-.]+)?$"
+    },
+    "UuidString": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "IsoTimestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "Producer": {
+      "type": "object",
+      "required": ["appVersion", "schemaVersion", "hardwareProfile"],
+      "properties": {
+        "appVersion": { "$ref": "#/$defs/SemverString" },
+        "schemaVersion": { "$ref": "#/$defs/SemverString" },
+        "hardwareProfile": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "Section": {
+      "type": "string",
+      "enum": [
+        "BULL", "OUTER_BULL", "MISS",
+        "S1","S2","S3","S4","S5","S6","S7","S8","S9","S10",
+        "S11","S12","S13","S14","S15","S16","S17","S18","S19","S20",
+        "D1","D2","D3","D4","D5","D6","D7","D8","D9","D10",
+        "D11","D12","D13","D14","D15","D16","D17","D18","D19","D20",
+        "T1","T2","T3","T4","T5","T6","T7","T8","T9","T10",
+        "T11","T12","T13","T14","T15","T16","T17","T18","T19","T20"
+      ]
+    },
+    "Outcome": {
+      "type": "string",
+      "enum": ["scored", "missed", "rejected"]
+    },
+    "Coordinates": {
+      "type": "object",
+      "required": ["x", "y", "unit"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "unit": { "type": "string", "const": "mm" }
+      },
+      "additionalProperties": false
+    },
+    "ConfidenceAmount": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "Alternative": {
+      "type": "object",
+      "required": ["section", "number", "multiplier", "score", "confidence"],
+      "properties": {
+        "section": { "$ref": "#/$defs/Section" },
+        "number": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "multiplier": { "type": "integer", "enum": [0, 1, 2, 3] },
+        "score": { "type": "integer", "minimum": 0, "maximum": 60 },
+        "confidence": { "$ref": "#/$defs/ConfidenceAmount" }
+      },
+      "additionalProperties": false
+    },
+    "Confidence": {
+      "type": "object",
+      "required": ["amount"],
+      "properties": {
+        "amount": { "$ref": "#/$defs/ConfidenceAmount" },
+        "alternatives": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Alternative" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CameraEvidenceItem": {
+      "type": "object",
+      "required": ["cameraId", "usable", "confidence", "reason"],
+      "properties": {
+        "cameraId": { "type": "string", "minLength": 1 },
+        "usable": { "type": "boolean" },
+        "confidence": { "$ref": "#/$defs/ConfidenceAmount" },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "candidateAccepted",
+            "noCandidate",
+            "lowConfidence",
+            "occluded",
+            "disagreement",
+            "cameraOffline",
+            "calibrationInvalid"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Latency": {
+      "type": "object",
+      "required": ["landToEventMs", "stageMs"],
+      "properties": {
+        "landToEventMs": { "type": "integer", "minimum": 0 },
+        "stageMs": {
+          "type": "object",
+          "required": ["capture", "motion", "diff", "candidate", "fusion", "score", "emit"],
+          "properties": {
+            "capture": { "type": "integer", "minimum": 0 },
+            "motion": { "type": "integer", "minimum": 0 },
+            "diff": { "type": "integer", "minimum": 0 },
+            "candidate": { "type": "integer", "minimum": 0 },
+            "fusion": { "type": "integer", "minimum": 0 },
+            "score": { "type": "integer", "minimum": 0 },
+            "emit": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ThrowContext": {
+      "type": "object",
+      "required": ["dartIndex"],
+      "properties": {
+        "throwId": { "type": "string" },
+        "turnId": { "type": "string" },
+        "dartIndex": { "type": "integer", "minimum": 1, "maximum": 3 }
+      },
+      "additionalProperties": false
+    },
+    "Extensions": {
+      "type": "object",
+      "patternProperties": {
+        "^x-[a-zA-Z][a-zA-Z0-9-]*$": {}
+      },
+      "additionalProperties": false
+    },
+    "DartEvent": {
+      "type": "object",
+      "required": [
+        "version", "type", "eventId", "timestamp", "producer",
+        "throwContext", "outcome", "section", "number", "multiplier", "score",
+        "coordinates", "confidence", "cameraEvidence", "latency"
+      ],
+      "properties": {
+        "version": { "$ref": "#/$defs/SemverString" },
+        "type": { "const": "Dart" },
+        "eventId": { "$ref": "#/$defs/UuidString" },
+        "timestamp": { "$ref": "#/$defs/IsoTimestamp" },
+        "producer": { "$ref": "#/$defs/Producer" },
+        "throwContext": { "$ref": "#/$defs/ThrowContext" },
+        "outcome": { "$ref": "#/$defs/Outcome" },
+        "section": { "$ref": "#/$defs/Section" },
+        "number": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "multiplier": { "type": "integer", "enum": [0, 1, 2, 3] },
+        "score": { "type": "integer", "minimum": 0, "maximum": 60 },
+        "coordinates": { "$ref": "#/$defs/Coordinates" },
+        "confidence": { "$ref": "#/$defs/Confidence" },
+        "cameraEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/CameraEvidenceItem" }
+        },
+        "latency": { "$ref": "#/$defs/Latency" },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      },
+      "additionalProperties": false
+    },
+    "CalibrationStatusEvent": {
+      "type": "object",
+      "required": ["version", "type", "eventId", "timestamp", "producer", "status", "profileId", "cameraIds", "selfTestConfirmed"],
+      "properties": {
+        "version": { "$ref": "#/$defs/SemverString" },
+        "type": { "const": "CalibrationStatus" },
+        "eventId": { "$ref": "#/$defs/UuidString" },
+        "timestamp": { "$ref": "#/$defs/IsoTimestamp" },
+        "producer": { "$ref": "#/$defs/Producer" },
+        "status": {
+          "type": "string",
+          "enum": ["missing", "inProgress", "valid", "invalid", "stale"]
+        },
+        "profileId": { "type": "string" },
+        "selfTestConfirmed": { "type": "boolean" },
+        "message": { "type": "string" },
+        "cameraIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "projectionErrorMm": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      },
+      "additionalProperties": false
+    },
+    "CameraStatusEvent": {
+      "type": "object",
+      "required": ["version", "type", "eventId", "timestamp", "producer", "cameraId", "status"],
+      "properties": {
+        "version": { "$ref": "#/$defs/SemverString" },
+        "type": { "const": "CameraStatus" },
+        "eventId": { "$ref": "#/$defs/UuidString" },
+        "timestamp": { "$ref": "#/$defs/IsoTimestamp" },
+        "producer": { "$ref": "#/$defs/Producer" },
+        "cameraId": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["unknown", "connected", "streaming", "degraded", "disconnected", "error"]
+        },
+        "resolution": {
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "fps": { "type": "integer", "minimum": 0 },
+        "effectiveFps": { "type": "number", "minimum": 0 },
+        "droppedFrames": { "type": "integer", "minimum": 0 },
+        "settings": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      },
+      "additionalProperties": false
+    },
+    "TurnStateName": {
+      "type": "string",
+      "enum": [
+        "awaitingThrow",
+        "motion",
+        "settling",
+        "scoring",
+        "awaitingTakeout",
+        "takeoutInProgress",
+        "takeoutIncomplete",
+        "turnReset"
+      ]
+    },
+    "TurnStateReason": {
+      "type": "string",
+      "enum": [
+        "motionDetected",
+        "motionSettled",
+        "dartScored",
+        "turnFull",
+        "handDetected",
+        "handRetracted",
+        "boardClearConfirmed",
+        "boardNotClear",
+        "manualReset",
+        "bounceTimeout",
+        "cameraInsufficient"
+      ]
+    },
+    "TurnStateEvent": {
+      "type": "object",
+      "required": ["version", "type", "eventId", "timestamp", "producer", "state", "previousState", "turnId", "dartIndex", "dartsThisTurn", "handPresent", "boardClear", "reason"],
+      "properties": {
+        "version": { "$ref": "#/$defs/SemverString" },
+        "type": { "const": "TurnState" },
+        "eventId": { "$ref": "#/$defs/UuidString" },
+        "timestamp": { "$ref": "#/$defs/IsoTimestamp" },
+        "producer": { "$ref": "#/$defs/Producer" },
+        "state": { "$ref": "#/$defs/TurnStateName" },
+        "previousState": { "$ref": "#/$defs/TurnStateName" },
+        "turnId": { "type": "string" },
+        "dartIndex": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "dartsThisTurn": { "type": "integer", "minimum": 1, "maximum": 9 },
+        "handPresent": { "type": "boolean" },
+        "boardClear": { "type": "boolean" },
+        "reason": { "$ref": "#/$defs/TurnStateReason" },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      },
+      "additionalProperties": false
+    },
+    "ErrorEvent": {
+      "type": "object",
+      "required": ["version", "type", "eventId", "timestamp", "producer", "code", "severity", "message", "recoverable"],
+      "properties": {
+        "version": { "$ref": "#/$defs/SemverString" },
+        "type": { "const": "Error" },
+        "eventId": { "$ref": "#/$defs/UuidString" },
+        "timestamp": { "$ref": "#/$defs/IsoTimestamp" },
+        "producer": { "$ref": "#/$defs/Producer" },
+        "code": { "type": "string", "minLength": 1 },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error", "fatal"]
+        },
+        "message": { "type": "string" },
+        "recoverable": { "type": "boolean" },
+        "details": { "type": "object", "additionalProperties": true },
+        "extensions": { "$ref": "#/$defs/Extensions" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

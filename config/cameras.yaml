@@ -1,0 +1,90 @@
+# cameras.yaml — darts detector camera configuration
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# HOW TO SET UP:
+# 1. Run:  uv run python -m darts_detector.capture.list_devices
+# 2. The tool will print a table of all detected cameras. Look for rows marked
+#    "** DARTS CAM **" — these are your Autodarts DIY Cam devices.
+# 3. Copy the "Device Path (USB instance)" value for each camera into the
+#    devicePath field below, matching the correct physical role:
+#      cam_left   — camera to the left of the board (player's perspective)
+#      cam_center — camera above or directly facing the board
+#      cam_right  — camera to the right of the board (player's perspective)
+# 4. The devicePath is stable as long as each camera stays plugged into
+#    the same physical USB port. If you move a camera to a different port,
+#    re-run list_devices and update this file.
+#
+# NOTE: All three cameras share the same friendly name "Autodarts DIY Cam".
+#       The devicePath is the only stable per-camera disambiguator on Windows.
+
+version: 1
+
+cameras:
+  - cameraId: cam_left
+    name: Left camera
+    friendlyName: "Autodarts DIY Cam"
+    # Fill in after running list_devices:
+    devicePath: ""
+    role: cam_left
+    resolution:
+      width: 1280
+      height: 720
+    fps: 60
+    exposure:
+      mode: manual
+      value: 100
+    gain: 0
+    brightness: 0
+    contrast: 0
+    whiteBalance:
+      mode: manual
+      value: 4500
+    rotation: 0
+    crop: null
+    enabled: true
+
+  - cameraId: cam_center
+    name: Center camera
+    friendlyName: "Autodarts DIY Cam"
+    # Fill in after running list_devices:
+    devicePath: ""
+    role: cam_center
+    resolution:
+      width: 1280
+      height: 720
+    fps: 60
+    exposure:
+      mode: manual
+      value: 100
+    gain: 0
+    brightness: 0
+    contrast: 0
+    whiteBalance:
+      mode: manual
+      value: 4500
+    rotation: 0
+    crop: null
+    enabled: true
+
+  - cameraId: cam_right
+    name: Right camera
+    friendlyName: "Autodarts DIY Cam"
+    # Fill in after running list_devices:
+    devicePath: ""
+    role: cam_right
+    resolution:
+      width: 1280
+      height: 720
+    fps: 60
+    exposure:
+      mode: manual
+      value: 100
+    gain: 0
+    brightness: 0
+    contrast: 0
+    whiteBalance:
+      mode: manual
+      value: 4500
+    rotation: 0
+    crop: null
+    enabled: true

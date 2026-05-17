@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# uv
+.uv/
+uv.lock
+
+# Secrets / env
+.env
+.env.*
+*.secret
+
+# Logs
+logs/
+*.log
+
+# Machine-generated calibration profiles (JSON, not hand-edited)
+calibration_profiles/*.json
+config/calibration/*.json
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.prof
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Datasets (large binary data — not committed by default)
+datasets/throws/

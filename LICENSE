@@ -1,0 +1,53 @@
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2026 Darts Detector Contributors
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+----------------------------------------------------------------------
+
+This LICENSE file contains the short license notice. The full canonical
+text of the GNU General Public License v3.0 MUST be placed alongside it
+before this project is distributed.
+
+Canonical text:  https://www.gnu.org/licenses/gpl-3.0.txt
+Plain HTML:      https://www.gnu.org/licenses/gpl-3.0.html
+
+To complete the LICENSE in this repository, run:
+
+    curl -fsSL https://www.gnu.org/licenses/gpl-3.0.txt -o COPYING
+
+This places the full canonical license text in a file named COPYING
+(the GNU convention). Both LICENSE and COPYING together satisfy GPL-3.0
+distribution requirements. GitHub's license detection recognises this
+layout and labels the repository correctly as GPL-3.0-or-later.
+
+Until COPYING is in place, this project is not ready for public
+distribution.
+
+----------------------------------------------------------------------
+
+Per-file header to add to every source file in this project:
+
+    # SPDX-License-Identifier: GPL-3.0-or-later
+    # Copyright (C) 2026 Darts Detector Contributors
+    #
+    # This file is part of the Darts Detector project.
+    # See LICENSE and COPYING for license details.
+
+The SPDX-License-Identifier line is the modern equivalent of the long
+GPL header block and is machine-readable for license-compliance tooling
+(REUSE, FOSSology, etc.).

@@ -1,0 +1,129 @@
+# Calibration System
+
+Calibration maps each camera view to dartboard coordinates. MVP calibration is manual by design because reliability matters more than automation during the first implementation.
+
+## Calibration Goals
+
+- Produce stable camera-to-board mappings.
+- Support three fixed cameras.
+- Make calibration quality visible.
+- Save profiles that can be loaded across restarts.
+- Allow future semi-automatic and fully automatic calibration without replacing the MVP workflow too early.
+
+## Manual Calibration First
+
+For MVP, the user manually marks key dartboard points in all three camera views.
+
+Manual calibration is acceptable because:
+
+- Camera positions are fixed.
+- Calibration is not needed before every throw.
+- It gives deterministic, inspectable setup data.
+- It avoids brittle early automation.
+
+## Required User-Marked Points
+
+The exact UI can evolve, but the calibration model must capture enough information to map image coordinates to board coordinates.
+
+Recommended marked data:
+
+| Point/Feature | Purpose |
+| --- | --- |
+| Centre bull | Defines board origin. |
+| Inner bull edge or points | Helps validate scale near center if visible. |
+| Outer bull edge or points | Helps validate center and radial scale. |
+| Triple ring points | Helps map middle scoring ring and perspective. |
+| Double ring points | Defines outer scoring boundary. |
+| 20 segment orientation | Defines angular rotation of board. |
+| Additional ring/segment intersections | Improves perspective fit and validation. |
+
+All points should be stored per camera with image coordinates and semantic labels.
+
+## Board Coordinate System
+
+Calibration output should map each camera view into board coordinates where:
+
+- Bull center is `(0, 0)`.
+- Positive and negative axes are consistent across the application.
+- Distances are normalized or expressed in board units.
+- The scoring engine can consume coordinates without knowing camera image geometry.
+
+The scoring engine should not depend on raw image coordinates.
+
+## Perspective Mapping
+
+Each camera sees the board from an angle, so the board appears distorted.
+
+Calibration should estimate a mapping from image space to board space using:
+
+- Board center.
+- Ring geometry.
+- Segment orientation.
+- Perspective transform or another documented deterministic mapping.
+
+The mapping must be validated by projecting known board geometry back onto the camera image and checking whether overlays align with the real board.
+
+## Saved Calibration Profile
+
+A calibration profile should include:
+
+- Profile ID and version.
+- Creation and update timestamps.
+- Camera IDs and names.
+- Resolution, rotation, and crop used during calibration.
+- Marked calibration points for each camera.
+- Computed mapping parameters.
+- Validation metrics.
+- Board geometry version.
+
+The profile must be invalidated or flagged when camera settings affecting geometry change.
+
+## Recalibration Workflow
+
+Recalibration is required when:
+
+- A camera moves.
+- The dartboard moves or rotates.
+- Resolution, crop, or rotation changes.
+- Overlays no longer match the board.
+- Accuracy metrics show systematic location error.
+
+Recommended workflow:
+
+1. Show current camera views.
+2. Load existing calibration profile if present.
+3. Overlay projected board geometry.
+4. Let the user adjust points.
+5. Validate projection quality.
+6. Save a new profile version.
+7. Run a calibration smoke test before enabling scoring.
+
+## Calibration Validation
+
+Validation should check:
+
+- Required points exist for each camera.
+- Points are within image bounds.
+- Board orientation is consistent.
+- Ring projections are plausible.
+- Mappings are numerically stable.
+- Calibration was captured with matching camera settings.
+
+Calibration should fail closed. If validation fails, live scoring should not start.
+
+## Future Semi-Automatic Calibration
+
+Semi-automatic calibration may assist the user by detecting likely rings, center, and segment orientation.
+
+Rules:
+
+- User correction must remain available.
+- Suggested points must be visually confirmed.
+- Assisted calibration must produce the same profile format as manual calibration.
+- It must remain deterministic and inspectable.
+
+## Future Fully Automatic Calibration
+
+Long-term, the goal is automated calibration with a user experience similar to mature DIY camera scoring systems.
+
+Fully automatic calibration should not become required until it is measured against a representative calibration dataset. It must be developed separately from the manual MVP path and must not reduce reliability.
