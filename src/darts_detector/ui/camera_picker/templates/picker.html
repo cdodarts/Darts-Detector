@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Darts Detector — Camera Setup</title>
+  <link rel="stylesheet" href="/static/picker.css">
+</head>
+<body>
+  <header>
+    <h1>Darts Detector</h1>
+    <p class="subtitle">Camera Setup</p>
+  </header>
+
+  <main>
+
+    {% if saved %}
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Success state                                                        -->
+    <!-- ------------------------------------------------------------------ -->
+    <section class="success-panel" role="status" aria-live="polite">
+      <div class="success-icon" aria-hidden="true">&#10003;</div>
+      <h2>Cameras saved successfully</h2>
+      <p>Configuration written to:</p>
+      <code>{{ cameras_yaml_path }}</code>
+
+      <table class="saved-summary" aria-label="Saved camera assignments">
+        <thead>
+          <tr><th>Role</th><th>Camera</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Camera 1</td><td>{{ label_1 }}</td></tr>
+          <tr><td>Camera 2</td><td>{{ label_2 }}</td></tr>
+          <tr><td>Camera 3</td><td>{{ label_3 }}</td></tr>
+        </tbody>
+      </table>
+
+      <p class="next-step">
+        You can close this tab. Run the smoke test to verify capture:
+      </p>
+      <pre>uv run pytest tests/smoke/test_phase1_capture.py -v</pre>
+    </section>
+
+    {% else %}
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Picker state                                                         -->
+    <!-- ------------------------------------------------------------------ -->
+
+    {% if camera_count == 0 %}
+    <div class="banner banner-warn" role="alert">
+      No cameras detected. Check that all three cameras are plugged in, then
+      <a href="/">refresh this page</a>.
+    </div>
+    {% elif camera_count < 3 %}
+    <div class="banner banner-warn" role="alert">
+      Only {{ camera_count }} camera(s) found. Expected 3. Check USB connections,
+      then <a href="/">refresh this page</a>.
+    </div>
+    {% else %}
+    <div class="banner banner-ok" role="status">
+      {{ camera_count }} camera(s) detected. Assign each one to its physical
+      position, then click <strong>Save Configuration</strong>.
+    </div>
+    {% endif %}
+
+    <p class="instructions">
+      Use the dropdown under each preview to select which camera is mounted
+      at that position. The preview updates automatically when you change
+      the selection.
+    </p>
+
+    <form method="post" action="/save" id="picker-form">
+      <div class="camera-grid">
+
+        <!-- Camera 1 -->
+        <div class="camera-card" id="card-1">
+          <h2 class="role-label">Camera 1</h2>
+          <div class="preview-wrapper">
+            <img
+              id="preview-1"
+              class="preview"
+              src="/preview/{{ default_1 }}"
+              alt="Camera 1 preview"
+            >
+          </div>
+          <label for="cam_1" class="sr-only">Camera 1</label>
+          <select
+            id="cam_1"
+            name="cam_1"
+            class="cam-select"
+            data-preview-target="preview-1"
+            aria-label="Select Camera 1"
+          >
+            {% for cam in cameras %}
+            <option
+              value="{{ cam.index }}"
+              {% if cam.index == default_1 %}selected{% endif %}
+              {% if cam.is_darts_cam %}class="darts-cam"{% endif %}
+            >{{ cam.label }}{% if cam.is_darts_cam %} ★{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Camera 2 -->
+        <div class="camera-card" id="card-2">
+          <h2 class="role-label">Camera 2</h2>
+          <div class="preview-wrapper">
+            <img
+              id="preview-2"
+              class="preview"
+              src="/preview/{{ default_2 }}"
+              alt="Camera 2 preview"
+            >
+          </div>
+          <label for="cam_2" class="sr-only">Camera 2</label>
+          <select
+            id="cam_2"
+            name="cam_2"
+            class="cam-select"
+            data-preview-target="preview-2"
+            aria-label="Select Camera 2"
+          >
+            {% for cam in cameras %}
+            <option
+              value="{{ cam.index }}"
+              {% if cam.index == default_2 %}selected{% endif %}
+              {% if cam.is_darts_cam %}class="darts-cam"{% endif %}
+            >{{ cam.label }}{% if cam.is_darts_cam %} ★{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Camera 3 -->
+        <div class="camera-card" id="card-3">
+          <h2 class="role-label">Camera 3</h2>
+          <div class="preview-wrapper">
+            <img
+              id="preview-3"
+              class="preview"
+              src="/preview/{{ default_3 }}"
+              alt="Camera 3 preview"
+            >
+          </div>
+          <label for="cam_3" class="sr-only">Camera 3</label>
+          <select
+            id="cam_3"
+            name="cam_3"
+            class="cam-select"
+            data-preview-target="preview-3"
+            aria-label="Select Camera 3"
+          >
+            {% for cam in cameras %}
+            <option
+              value="{{ cam.index }}"
+              {% if cam.index == default_3 %}selected{% endif %}
+              {% if cam.is_darts_cam %}class="darts-cam"{% endif %}
+            >{{ cam.label }}{% if cam.is_darts_cam %} ★{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+      </div><!-- .camera-grid -->
+
+      <div class="actions">
+        <button type="submit" class="btn-save" id="save-btn">
+          Save Configuration
+        </button>
+        <p class="hint">
+          Cameras marked with &#9733; are Autodarts DIY Cams.
+        </p>
+      </div>
+    </form>
+
+    {% endif %}
+
+  </main>
+
+  <footer>
+    <p>
+      Darts Detector &mdash; open source &mdash;
+      <a href="https://github.com/your-org/darts-detector" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </footer>
+
+  {% if not saved %}
+  <script src="/static/picker.js"></script>
+  {% endif %}
+</body>
+</html>

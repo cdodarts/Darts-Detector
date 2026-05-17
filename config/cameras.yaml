@@ -6,10 +6,10 @@
 # 2. The tool will print a table of all detected cameras. Look for rows marked
 #    "** DARTS CAM **" — these are your Autodarts DIY Cam devices.
 # 3. Copy the "Device Path (USB instance)" value for each camera into the
-#    devicePath field below, matching the correct physical role:
-#      cam_left   — camera to the left of the board (player's perspective)
-#      cam_center — camera above or directly facing the board
-#      cam_right  — camera to the right of the board (player's perspective)
+#    devicePath field below, matching each physical USB port to a camera number.
+#      cam_1 — first camera port
+#      cam_2 — second camera port
+#      cam_3 — third camera port
 # 4. The devicePath is stable as long as each camera stays plugged into
 #    the same physical USB port. If you move a camera to a different port,
 #    re-run list_devices and update this file.
@@ -20,12 +20,12 @@
 version: 1
 
 cameras:
-  - cameraId: cam_left
-    name: Left camera
+  - cameraId: cam_1
+    name: Camera 1
     friendlyName: "Autodarts DIY Cam"
     # Fill in after running list_devices:
     devicePath: ""
-    role: cam_left
+    role: cam_1
     resolution:
       width: 1280
       height: 720
@@ -43,12 +43,12 @@ cameras:
     crop: null
     enabled: true
 
-  - cameraId: cam_center
-    name: Center camera
+  - cameraId: cam_2
+    name: Camera 2
     friendlyName: "Autodarts DIY Cam"
     # Fill in after running list_devices:
     devicePath: ""
-    role: cam_center
+    role: cam_2
     resolution:
       width: 1280
       height: 720
@@ -66,12 +66,12 @@ cameras:
     crop: null
     enabled: true
 
-  - cameraId: cam_right
-    name: Right camera
+  - cameraId: cam_3
+    name: Camera 3
     friendlyName: "Autodarts DIY Cam"
     # Fill in after running list_devices:
     devicePath: ""
-    role: cam_right
+    role: cam_3
     resolution:
       width: 1280
       height: 720

@@ -22,13 +22,15 @@ Configuration is **YAML** for hand-edited files and **JSON** for machine-generat
 
 ## Camera Configuration
 
+`config/cameras.yaml` is the primary camera configuration file. It is written automatically by the browser-based camera picker (`uv run python -m darts_detector.cli.camera_picker`), which lets the user assign physical cameras to logical roles via a live-preview UI. Users may also edit the file by hand — the format is deliberately human-readable per `D-005`.
+
 Each camera should have:
 
-- `cameraId`: Stable internal ID such as `cam_left`, `cam_center`, or `cam_right`.
+- `cameraId`: Stable internal ID such as `cam_1`, `cam_2`, or `cam_3`.
 - `name`: Human-readable name such as `Left camera`.
 - `friendlyName`: DirectShow friendly name used to filter candidate devices (e.g. `"Autodarts DIY Cam"`). On Windows, all three darts cameras share this name; `devicePath` is the disambiguator.
-- `devicePath`: USB device instance path (e.g. `USB\VID_0C45&PID_6366\<port-path>`) identifying the exact physical port. Stable per port. Run `list_devices` to discover it. On Linux, use `/dev/videoN` instead.
-- `role`: Logical role — one of `cam_left`, `cam_center`, `cam_right`.
+- `devicePath`: USB device instance path (e.g. `USB\VID_0C45&PID_6366\<port-path>`) identifying the exact physical port. Stable per port. Discovered by the picker UI or by running `list_devices`. On Linux, use `/dev/videoN` instead.
+- `role`: Logical role — one of `cam_1`, `cam_2`, `cam_3`.
 - `resolution`: Width and height.
 - `fps`: Target frames per second.
 - `exposure`: Manual exposure value where supported.

@@ -77,6 +77,8 @@ These decisions are locked. Full rationale lives in [DECISIONS.md](DECISIONS.md)
 - **Calibration self-test:** required before scoring is enabled (`D-008`).
 - **Latency budget:** per-stage, enforced from Phase 1 (`D-009`, [LATENCY_BUDGET.md](LATENCY_BUDGET.md)).
 - **Semi-/fully-automatic calibration:** post-MVP (`D-010`).
+- **Frontend stack:** browser-based HTML/JS served by FastAPI for all user-facing surfaces (`D-017`).
+- **UX quality:** every user-facing surface must be obvious on first use; painful setup is treated as a bug (`D-018`).
 
 ## Development Phases
 
@@ -125,12 +127,22 @@ All required documentation files exist, scope is constrained, agent rules are in
 - Other webcams are attached and must be excluded. Selection is by friendly name + USB device instance path.
 
 **Camera selection approach:**
-- `list_devices.py` CLI enumerates all UVC devices via DirectShow and prints: index, friendly name, device instance path, and a frame thumbnail.
-- User runs it once, identifies which port-path maps to left/center/right, and fills in `config/cameras.yaml`.
-- Startup filters by `friendlyName: "Autodarts DIY Cam"` first, then matches `devicePath` to assign roles `cam_left`, `cam_center`, `cam_right`.
+- A browser-based camera picker (`uv run python -m darts_detector.cli.camera_picker`) opens automatically in the user's default browser at `http://127.0.0.1:8765`.
+- The picker shows three role dropdowns (Camera 1/2/3) populated with all enumerated cameras, with a live MJPEG preview (5 fps) per camera.
+- The user selects which physical camera maps to each role and clicks Save; the picker writes `config/cameras.yaml` and exits.
+- `list_devices.py` is retained as a headless CLI fallback (`uv run python -m darts_detector.capture.list_devices`) for Pi 5 / no-browser environments.
+- Startup filters by `friendlyName: "Autodarts DIY Cam"` first, then matches `devicePath` to assign roles `cam_1`, `cam_2`, `cam_3`.
 - If all three cameras share the same friendly name (likely), the device path is the stable per-port disambiguator.
 
 **Package toolchain:** `uv` (Python 3.11+).
+
+**New dependencies added (2026-05-17):** `fastapi>=0.110`, `uvicorn[standard]>=0.29`, `jinja2>=3.1`, `python-multipart>=0.0.9`, `pygrabber>=0.2`, `comtypes>=1.4`. Run `uv sync` to install.
+
+**Frontend stack locked (2026-05-17):** `D-017` — all user-facing UI delivered as HTML/JS served by FastAPI. `D-018` — UX quality is a first-class requirement. Camera picker is the first surface; calibration assistant and debug UI will follow the same pattern.
+
+**Camera role rename (2026-05-17):** Camera roles renamed from `cam_left`/`cam_center`/`cam_right` to `cam_1`/`cam_2`/`cam_3` in all code, config, templates, and docs. Three cameras at 120° do not have a meaningful left/center/right. Display labels updated to "Camera 1/2/3".
+
+**Mobile responsive picker (2026-05-17):** Camera picker page made fully responsive for phone-sized screens. Panels stack vertically below 768px, side-by-side above. 16px minimum font on selects (prevents iOS auto-zoom), 44px minimum tap targets. LAN access supported via `--host 0.0.0.0`; terminal prints LAN URL for phone access.
 
 **Phase 1 smoke test:**
 Opens all 3 cameras using the config, captures for 30 seconds, asserts measured FPS >= configured FPS - 5%, asserts per-stage latency (capture → frame-available) is logged for every frame and within budget per `LATENCY_BUDGET.md`.

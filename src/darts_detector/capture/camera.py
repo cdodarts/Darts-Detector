@@ -34,7 +34,7 @@ class Camera:
     Single-camera wrapper.
 
     Args:
-        camera_id:    Logical camera ID (e.g. 'cam_left'). Used in log messages.
+        camera_id:    Logical camera ID (e.g. 'cam_1'). Used in log messages.
         device_index: OpenCV device index (integer). Resolved by the caller via
                       list_devices or config matching.
         config:       CameraEntry from cameras.yaml.

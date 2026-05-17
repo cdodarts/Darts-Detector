@@ -16,44 +16,52 @@ Requires [uv](https://docs.astral.sh/uv/). Install it with:
 pip install uv
 ```
 
-Then sync the project:
+Then sync the project (installs FastAPI, uvicorn, and all other dependencies):
 
 ```
 uv sync
 ```
 
-### 2. Identify your cameras
+### 2. Assign your cameras with the browser picker
 
-Run the device listing tool to find your three Autodarts DIY Cam devices and their USB instance paths:
+Plug in all three cameras, then launch the camera picker:
+
+```
+uv run python -m darts_detector.cli.camera_picker
+```
+
+Your browser opens automatically at `http://127.0.0.1:8765`. You will see:
+
+- Three panels labelled **Camera 1 / Camera 2 / Camera 3**.
+- A live preview (5 fps) for each camera.
+- A dropdown under each preview to select which physical camera goes in that slot.
+
+Select the correct camera for each slot, then click **Save Configuration**.
+The picker writes `config/cameras.yaml` and closes the server. You can then
+close the browser tab.
+
+**Setting up from a phone or tablet?** Launch with `--host 0.0.0.0` so the
+picker is reachable over your LAN:
+
+```
+uv run python -m darts_detector.cli.camera_picker --host 0.0.0.0
+```
+
+The terminal will print both the localhost URL and a LAN URL such as
+`http://192.168.1.x:8765`. Open the LAN URL on your phone's browser to
+complete the setup wirelessly.
+
+**No browser / headless Pi?** Use the CLI fallback instead:
 
 ```
 uv run python -m darts_detector.capture.list_devices
 ```
 
-The tool prints a table like:
+Then edit `config/cameras.yaml` manually with the device paths shown.
 
-```
-Idx    Friendly Name             Device Path (USB instance)          Notes
------- ------------------------- ----------------------------------- ----------------
-0      Autodarts DIY Cam         USB\VID_0C45&PID_6366\6&...        ** DARTS CAM **
-1      Autodarts DIY Cam         USB\VID_0C45&PID_6366\6&...        ** DARTS CAM **
-2      Autodarts DIY Cam         USB\VID_0C45&PID_6366\6&...        ** DARTS CAM **
-3      Integrated Webcam         USB\VID_0BDA&PID_5520\...
-```
+### 3. Run the Phase 1 smoke test
 
-For more accurate friendly names and device paths, install optional helpers:
-
-```
-uv add pygrabber comtypes
-```
-
-### 3. Configure your cameras
-
-Open `config/cameras.yaml` and paste the `Device Path` value for each camera into the correct role (`cam_left`, `cam_center`, `cam_right`).
-
-### 4. Run the Phase 1 smoke test
-
-With all three cameras connected and `cameras.yaml` filled in:
+With all three cameras connected and `cameras.yaml` written:
 
 ```
 uv run pytest tests/smoke/test_phase1_capture.py -v

@@ -39,14 +39,17 @@ Locked decisions ([DECISIONS.md](DECISIONS.md)) apply to every phase:
 
 | Item | Detail |
 | --- | --- |
-| Objective | Capture frames from three USB cameras concurrently. |
-| Inputs | Camera IDs, selected resolution, selected FPS. |
-| Outputs | Timestamped frames and camera status for each camera. |
-| Acceptance Criteria | Three configured cameras stream concurrently without blocking each other. |
-| Smoke Test | Start capture, show or log frames from `cam_left`, `cam_center`, and `cam_right` for at least 30 seconds with measured FPS. |
-| Common Failure Cases | Wrong camera ordering, dropped frames, blocking reads, unsupported resolution, unstable USB bandwidth. |
-| Files/modules likely involved | `src/darts_detector/capture/*`, `src/darts_detector/config/*`, `src/darts_detector/diagnostics/*`. |
-| Must Not Be Built Yet | Dart detection, scoring, WebSocket dart events, calibration UI beyond basic camera preview. |
+| Objective | Capture frames from three USB cameras concurrently, with a browser-based picker for first-time camera assignment. |
+| Inputs | Camera IDs (set via picker or manual edit), selected resolution, selected FPS. |
+| Outputs | Timestamped frames and camera status for each camera; `config/cameras.yaml` written by the picker. |
+| Acceptance Criteria | Three configured cameras stream concurrently without blocking each other. Camera picker opens in the browser, shows live previews, and writes `cameras.yaml` on save. |
+| Smoke Test | Start capture, show or log frames from `cam_1`, `cam_2`, and `cam_3` for at least 30 seconds with measured FPS. |
+| Common Failure Cases | Wrong camera ordering, dropped frames, blocking reads, unsupported resolution, unstable USB bandwidth, picker preview leaking camera handles. |
+| Files/modules likely involved | `src/darts_detector/capture/*`, `src/darts_detector/config/*`, `src/darts_detector/diagnostics/*`, `src/darts_detector/ui/camera_picker/*`, `src/darts_detector/cli/camera_picker.py`. |
+| Must Not Be Built Yet | Dart detection, scoring, WebSocket dart events, calibration UI beyond camera preview. |
+
+**Browser-based camera picker (primary setup flow — D-017, D-018):**
+Run `uv run python -m darts_detector.cli.camera_picker`. This starts a local FastAPI server on port 8765 and opens the user's default browser. The picker shows three role dropdowns (Camera 1 / Camera 2 / Camera 3) populated with all enumerated cameras, with a live MJPEG preview (5 fps) under each dropdown. The user selects the correct camera for each slot, clicks Save, and `config/cameras.yaml` is written automatically. The server then exits.
 
 **Windows DirectShow note (dev environment):**
 The development environment is Windows 11 with cameras attached via DirectShow. The default capture backend is `cv2.CAP_DSHOW`. On Linux (Pi 5 target), `cv2.CAP_ANY` is used and device paths become `/dev/videoN`.
@@ -54,11 +57,11 @@ The development environment is Windows 11 with cameras attached via DirectShow. 
 **Camera selection by friendly name and USB device path:**
 All three Autodarts DIY Cam devices share the same DirectShow friendly name (`"Autodarts DIY Cam"`). The stable per-camera disambiguator on Windows is the USB device instance path (e.g. `USB\VID_0C45&PID_6366\<port-path>`), which is stable as long as each camera stays in the same physical USB port.
 
-**`list_devices` helper:**
-Run `uv run python -m darts_detector.capture.list_devices` once to enumerate all DirectShow devices, print their index, friendly name, and USB instance path, and identify which physical camera belongs to which logical role. Copy the device paths into `config/cameras.yaml`.
+**`list_devices` headless fallback:**
+For environments without a browser (headless Pi 5, SSH session), run `uv run python -m darts_detector.capture.list_devices` to enumerate all DirectShow devices and print a table. Copy the device paths manually into `config/cameras.yaml`.
 
 **Startup camera matching:**
-At startup, the capture module filters detected cameras by `friendlyName` first, then matches `devicePath` to assign roles `cam_left`, `cam_center`, `cam_right`.
+At startup, the capture module filters detected cameras by `friendlyName` first, then matches `devicePath` to assign roles `cam_1`, `cam_2`, `cam_3`.
 
 ## Phase 2: Camera Settings And Performance Profiles
 
@@ -207,14 +210,15 @@ At startup, the capture module filters detected cameras by `friendlyName` first,
 
 | Item | Detail |
 | --- | --- |
-| Objective | Make detections reproducible and inspectable. |
+| Objective | Make detections reproducible and inspectable via the same FastAPI+browser stack introduced in Phase 1 (camera picker). |
 | Inputs | Saved frames, detection metadata, labelled truth where available. |
-| Outputs | Replay runner, debug overlays, inspection UI, statistics reports. |
-| Acceptance Criteria | A saved throw can be replayed without cameras and compared to expected truth. |
-| Smoke Test | Load a saved throw, replay detection, view overlays, and export the result summary. |
+| Outputs | Replay runner, debug overlays, browser-based inspection UI, statistics reports. |
+| Acceptance Criteria | A saved throw can be replayed without cameras and compared to expected truth. Debug UI served by FastAPI at a browser-accessible URL per `D-017`. |
+| Smoke Test | Load a saved throw, replay detection, view overlays in the browser, and export the result summary. |
 | Common Failure Cases | Missing metadata, replay path differs from live path, overlays do not match actual processed frames. |
-| Files/modules likely involved | `src/replay/*`, `src/debug/*`, `src/ui/debug/*`, `tests/replay/*`. |
+| Files/modules likely involved | `src/darts_detector/debug/replay/*`, `src/darts_detector/debug/overlays/*`, `src/darts_detector/ui/debug/*`, `tests/replay/*`. |
 | Must Not Be Built Yet | Non-debug match UI, online data sharing, automated accuracy claims. |
+| UI Note | Must meet the UX quality checklist in `D-018`. Visible state, plain-language errors, LAN accessible. |
 
 ## Phase 10: Semi-Automatic Calibration
 

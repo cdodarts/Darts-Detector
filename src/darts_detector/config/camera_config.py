@@ -42,7 +42,7 @@ class CropRect(BaseModel):
     height: int = Field(gt=0)
 
 
-CameraRole = Literal["cam_left", "cam_center", "cam_right"]
+CameraRole = Literal["cam_1", "cam_2", "cam_3"]
 
 
 class CameraEntry(BaseModel):
@@ -90,9 +90,9 @@ class CamerasConfig(BaseModel):
     def enabled_cameras(self) -> list[CameraEntry]:
         """Return only the enabled cameras, ordered by role."""
         role_order: dict[CameraRole, int] = {
-            "cam_left": 0,
-            "cam_center": 1,
-            "cam_right": 2,
+            "cam_1": 0,
+            "cam_2": 1,
+            "cam_3": 2,
         }
         return sorted(
             [c for c in self.cameras if c.enabled],
