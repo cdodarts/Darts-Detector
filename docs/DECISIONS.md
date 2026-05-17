@@ -172,6 +172,22 @@ Format: lightweight ADR. Status values: `accepted`, `superseded`, `deprecated`.
   - Accuracy target (~98%) applies across the full envelope (down to 640×480 @ 15 FPS). Detection geometry must not assume a fixed resolution.
 - **Supersedes:** The 60 FPS assumption implicit in `LATENCY_BUDGET.md`'s original capture budget and in the `cameras.yaml` example in `CONFIGURATION.md`. Those documents are updated in the same change; original values are preserved with "prior to D-019" labels where useful.
 
+## D-020: Image Tuning Precedes Calibration; Calibration Is Invalidated By Tuning Changes
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** Per-camera image tuning — exposure, brightness, contrast, gain, gamma, white balance, saturation, sharpness, backlight compensation — MUST be configured and saved BEFORE calibration is performed. A calibration profile is only valid for the exact tuning settings it was captured under. If tuning changes after calibration, the calibration is invalidated.
+- **Why:** Calibration captures the geometric and photometric response of the camera at one operating point. Exposure affects where an edge appears in pixel space; white balance affects colour-channel weighting used by thresholds; gamma affects the apparent brightness of the board surface. A calibration captured at one tuning state is not reliable when the camera operates under different tuning. The sensor response is parameterised by tuning — calibration captures one operating point only.
+- **Consequences:**
+  - Phase ordering: Phase 1 (camera selection) → Phase 1.5 (image tuning UI, covering ALL controls not just resolution/FPS) → Phase 3 (calibration). This is non-negotiable.
+  - Calibration profiles must record a fingerprint (SHA-256 hash) of the camera tuning settings in force when the calibration was captured.
+  - At runtime and at the start of the calibration assistant, the system must compare the current tuning settings against the fingerprint stored in the active calibration profile.
+  - If tuning has changed since calibration, the system must either auto-invalidate the calibration or display a prominent warning and offer a "Recalibrate" action.
+  - The calibration UI must show: "Current tuning matches calibration? Yes / No" and highlight mismatches field-by-field where practical.
+  - The Phase 1.5 tuning UI "Save and proceed to calibration" button must warn the user if a prior calibration exists and will be invalidated.
+  - This applies to every tuning field that affects the camera image: resolution, rotation, crop, exposure, gain, brightness, contrast, white balance, gamma, saturation, sharpness, backlight compensation.
+  - FPS does NOT invalidate calibration geometry (it is informational only), but IS recorded in the profile for diagnostics.
+
 ---
 
 ## How To Add A Decision

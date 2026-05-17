@@ -2,6 +2,45 @@
 
 Calibration maps each camera view to dartboard coordinates. MVP calibration is manual by design because reliability matters more than automation during the first implementation.
 
+## Hard Rule: Image Tuning Must Precede Calibration (D-020)
+
+**Calibration is only valid for the exact camera tuning settings it was captured under.**
+
+Every image tuning parameter — exposure, brightness, contrast, gain, gamma, white balance, saturation, sharpness, backlight compensation, resolution, rotation, crop — affects the pixel-level appearance of the board. A calibration captured under one set of tuning settings is not reliable when the camera operates under different settings.
+
+**Ordering constraint (locked in `D-020`):**
+```
+Phase 1 (camera selection) → Phase 1.5 (image tuning UI) → Phase 3 (calibration)
+```
+
+Do not build or enter the calibration UI until Phase 1.5 image tuning is complete and saved.
+
+### Calibration Tuning Fingerprint
+
+Every calibration profile must include a SHA-256 hash (fingerprint) of the camera tuning settings that were in force when the calibration was performed. The fingerprint is computed over all tuning fields that affect image geometry or appearance: resolution, rotation, crop, exposure (mode + value), gain, brightness, contrast, white balance (mode + value), gamma, saturation, sharpness, backlight compensation.
+
+FPS is recorded in the profile for diagnostics but does NOT contribute to the fingerprint (FPS does not affect image geometry).
+
+### Tuning Match Check
+
+At every entry point to the calibration UI and at runtime startup, the system must:
+
+1. Compute the current tuning fingerprint for each camera.
+2. Compare it to the fingerprint stored in the active calibration profile.
+3. If any camera's fingerprint does not match:
+   - Display: "Current tuning does not match calibration. Camera: [cam_id]. Recalibrate before scoring."
+   - Block scoring until the user either restores matching tuning settings or recalibrates.
+   - Offer a "Recalibrate" button that launches the calibration assistant.
+
+The calibration page must show a per-camera status indicator: "Tuning matches calibration: Yes / No" with field-level detail where practical.
+
+### Phase 1.5 Tuning UI Integration
+
+The Phase 1.5 image tuning UI "Save and proceed to calibration" button must:
+- Warn the user if an existing calibration profile is present and the tuning changes they made will invalidate it.
+- Allow the user to confirm the invalidation before proceeding.
+- Mark the existing calibration profile as stale (not delete it — the user may want to restore settings).
+
 ## Calibration Goals
 
 - Produce stable camera-to-board mappings.
@@ -71,13 +110,14 @@ A calibration profile should include:
 - Creation and update timestamps.
 - Camera IDs and names.
 - Resolution, rotation, and crop used during calibration.
-- `fps` at time of calibration (informational; does not invalidate calibration, but logged for diagnostics).
+- `fps` at time of calibration (informational; does not contribute to fingerprint, but logged for diagnostics).
+- **`tuningFingerprint` per camera** — SHA-256 hash of the tuning fields in force at calibration time. Fields hashed: resolution, rotation, crop, exposure (mode + value), gain, brightness, contrast, white balance (mode + value), gamma, saturation, sharpness, backlight compensation.
 - Marked calibration points for each camera.
 - Computed mapping parameters.
 - Validation metrics.
 - Board geometry version.
 
-The profile must be invalidated or flagged when camera settings affecting geometry change.
+The profile must be invalidated or flagged when any camera setting that contributes to the tuning fingerprint changes (per `D-020`).
 
 ## Recalibration Workflow
 
