@@ -1,3 +1,55 @@
+Where we are
+done
+Phase 0 closed
+done
+Phase 1 scaffold + picker + smoke test green on 1 camera
+not done
+Phase 1 fully closed — needs the 3-camera smoke test once you plug in the real Autodarts cams
+not done
+Phase 1.5 (tuning UI) — planned, not built
+not done
+Phase 2+ — pending
+What do you want next? Options:
+
+Plug in the 3 real cameras now, re-run picker + 3-camera smoke test → close Phase 1.
+Start building Phase 1.5 (tuning UI) on the laptop webcam so it's ready when you switch hardware.
+Stop here for the session.
+ok a few things we need to make clear to ensure we develop as needed. This is not a detection softwsare for a specific polished manufacturered kit. This is for people who buy different types of cameras, 3d print and self mount their cameras. So the hardware can vary, hence the need for to user to be able to select these kinds of things to ensure they get good detection/performance.
+
+has the software been structured in a way that allows us to add other settings in in future, as we progress the user needs to have options to adjust things like exposure, brightness, gamma, white balance. so the user can set their cameras up to match their lighting for the best performance
+
+again these features do not need implementing now, but they need to be part of the phased process and the structure needs to allow for their implementation (pre calibration so when the system calibrates these setting adjustments have a direct effect on the calibration and performance)
+
+This is a foundational direction-setting moment. Let me route it: I want the project ethos codified, the existing schema audited to confirm it already accommodates these fields cleanly, and the phase plan expanded with the full image-tuning surface and the ordering constraint (tuning before calibration).
+
+
+Ran an agent, updated todos
+All locked in. Summary:
+
+What just landed
+docs/PROJECT_ETHOS.md created and added to mandatory reads in CLAUDE.md. Says clearly: this is for DIY users with varied cameras, 3D-printed mounts, and varied lighting — the system adapts to user hardware, not the other way around.
+ADR D-020: image tuning precedes calibration. Calibration is invalidated when tuning changes. Calibration profiles will carry a tuning-settings fingerprint (SHA-256 of the relevant config subset) so the system can detect drift.
+Phase 1.5 scope expanded to "Camera Tuning UI" covering the full image-control surface: resolution, FPS, exposure, brightness, contrast, gamma, gain, white balance, saturation, sharpness, backlight comp, rotation, crop — plus live preview, live FPS/latency readout, "Apply to all 3", "Reset to defaults", "Save and proceed to calibration" with invalidation warning. Browser UI, mobile-responsive.
+docs/CALIBRATION_SYSTEM.md patched with the precedence rule and the fingerprint requirement.
+Direct answer to your architecture question
+Yes — the code is structured to absorb these settings without any refactor. Specifically:
+
+The CameraEntry Pydantic model already has exposure, gain, brightness, contrast, whiteBalance, rotation, crop as proper typed fields. Missing only: gamma, saturation, sharpness, backlightCompensation — four optional additive fields, no breaking change.
+Camera.open() is already the single point where settings get applied to the hardware. Right now it only applies resolution + FPS. Adding the rest is ~30 lines: one _apply_tuning() method with a config-field → cv2.CAP_PROP_* mapping table.
+multi_camera.py just passes configs through, untouched.
+Config flows cleanly: YAML → Pydantic → Camera.open() → driver. Nothing is hardcoded in other modules.
+When you're ready to build Phase 1.5, it's a clean extension, not a rewrite.
+
+One open question for later
+For the D-020 tuning fingerprint, my recommendation is SHA-256 of the serialised tuning JSON subset. Deterministic, collision-resistant, survives field additions. Confirm when we get to Phase 3 and I'll bake it in.
+
+Where we are
+Phase 1 scaffold + smoke test (1 camera) is done. The only thing standing between us and Phase 1 closure is plugging in the 3 real Autodarts cams and running the 3-camera smoke test.
+
+Tell me when you want to do that, or if you'd rather start Phase 1.5 on the laptop webcam first.
+
+how do i run the smoke test again
+
 From the project directory:
 
 uv run pytest tests/smoke/test_phase1_capture.py -v
@@ -13,3 +65,10 @@ Quick smoke run while we're still on 1 camera:
 
 uv run pytest tests/smoke/test_phase1_capture.py -v --cameras 1 --duration 10
 That'll finish in about 10 seconds instead of 30.
+
+i need to start my server again, whats the command?
+
+uv run camera-picker
+Or, to also access it from your phone on the LAN:
+
+uv run camera-picker --host 0.0.0.0
