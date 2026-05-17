@@ -64,19 +64,62 @@ For environments without a browser (headless Pi 5, SSH session), run `uv run pyt
 **Startup camera matching:**
 At startup, the capture module filters detected cameras by `friendlyName` first, then matches `devicePath` to assign roles `cam_1`, `cam_2`, `cam_3`.
 
-## Phase 1.5: Camera Tuning UI
+## Phase 1.5: Camera Tuning UI (Resolution, FPS, Exposure, White Balance, Gamma, And All Image Controls)
+
+**Ordering constraint (D-020):** This phase MUST complete before Phase 3 (calibration). Image tuning sets the camera operating point that calibration captures. Calibration performed before tuning is unreliable and must be redone if tuning subsequently changes.
 
 | Item | Detail |
 | --- | --- |
-| Objective | Provide a browser-based UI page where the user selects resolution and FPS per camera, sees a live preview at those settings, and views real-time performance diagnostics before proceeding to calibration. |
-| Inputs | `config/cameras.yaml` written by Phase 1 camera picker; selected resolution and FPS from UI dropdowns. |
-| Outputs | Updated `config/cameras.yaml` with the user's chosen resolution and FPS per camera; live performance readout (measured FPS, capture latency, dropped frames). |
-| Acceptance Criteria | (1) Per-camera dropdowns present the canonical resolution and FPS menus from D-019. (2) Apply button re-opens the camera at the new settings and refreshes the live readout. (3) Live readout updates once per second: measured FPS, measured capture latency, dropped-frame count. (4) Next button advances to calibration. (5) If resolution changes, calibration is marked stale and the user is warned. (6) Page is mobile-responsive per D-018. |
-| Smoke Test | With a connected camera: open the tuning UI, change resolution to 640×480 @ 15 FPS, click Apply, confirm live readout shows ~15 FPS. Change back to 1280×720 @ 30 FPS, Apply, confirm ~30 FPS. Click Next, confirm navigation to calibration page. |
-| Common Failure Cases | Camera does not support requested resolution/FPS (fall back to nearest available and report it); live readout stalls if no frames arrive; calibration stale flag not set on resolution change; dropdowns show unsupported combinations for the hardware. |
+| Objective | Provide a browser-based per-camera tuning UI where the user configures ALL image controls — not just resolution and FPS — sees a live preview reflecting changes immediately, views real-time diagnostics, and saves before proceeding to calibration. Ethos: this project serves DIY users with varied cameras and varied lighting; every parameter that affects detection must be user-controllable here. See `docs/PROJECT_ETHOS.md`. |
+| Inputs | `config/cameras.yaml` written by Phase 1 camera picker. |
+| Outputs | Updated `config/cameras.yaml` with all per-camera tuning settings; calibration marked stale if any tuning fingerprint field changes. |
+| Acceptance Criteria | See full deliverables checklist below. |
+| Smoke Test | With a connected camera: (1) open tuning UI, change resolution to 640×480 @ 15 FPS, click Apply, confirm live readout shows ~15 FPS and a "calibration will be invalidated" warning appears; (2) change back to 1280×720 @ 30 FPS, Apply, confirm ~30 FPS; (3) set manual exposure, observe live preview updates; (4) click "Save and proceed to calibration", confirm navigation to calibration page; (5) confirm `cameras.yaml` updated on disk. |
+| Common Failure Cases | Camera does not support requested resolution/FPS (fall back to nearest available and report it); live readout stalls if no frames arrive; calibration stale flag not set on resolution or tuning change; "Apply to all cameras" overwrites intentional per-camera differences silently. |
 | Files/modules likely involved | `src/darts_detector/ui/camera_tuning/`, `src/darts_detector/capture/`, `src/darts_detector/diagnostics/latency.py`, `src/darts_detector/config/camera_config.py`. |
-| Must Not Be Built Yet | Calibration UI (Phase 3), exposure/gain/white-balance tuning (Phase 2). |
-| UI Note | Must meet UX quality checklist in D-018: visible state, live feedback, plain-language errors, sensible defaults (1280×720 @ 30 FPS pre-filled), no required CLI step. LAN accessible. |
+| Must Not Be Built Yet | Calibration UI (Phase 3), detection pipeline. |
+| UI Note | Must meet UX quality checklist in D-018: visible state, live feedback, plain-language errors, sensible defaults pre-filled, no required CLI step. LAN accessible. Mobile-responsive. |
+
+### Phase 1.5 Deliverables Checklist
+
+**Per-camera control page:**
+- [ ] Per-camera page layout: one tab or section per camera role (Camera 1, Camera 2, Camera 3).
+- [ ] **Resolution** dropdown: canonical menu per D-019 (1920×1080, 1280×720, 800×600, 640×480). Default: 1280×720.
+- [ ] **FPS** dropdown: canonical menu per D-019 (60, 30, 25, 20, 15). Default: 30.
+- [ ] **Exposure** — toggle Auto / Manual. When Manual: integer value slider/input. Default: manual, value 100.
+- [ ] **Brightness** — integer slider/input. Default: 0.
+- [ ] **Contrast** — integer slider/input. Default: 0.
+- [ ] **Gamma** — integer slider/input. Default: not set (driver default). *(Note: not yet in Pydantic model — must be added in this phase; see `TODO-gamma` in `camera_config.py`.)*
+- [ ] **Gain** — integer slider/input. Default: 0.
+- [ ] **White Balance** — toggle Auto / Manual. When Manual: Kelvin value input. Default: manual, 4500K.
+- [ ] **Saturation** — integer slider/input. Default: not set. *(Reserved field — add to model in this phase.)*
+- [ ] **Sharpness** — integer slider/input. Default: not set. *(Reserved field — add to model in this phase.)*
+- [ ] **Backlight Compensation** — toggle On / Off. Default: Off. *(Reserved field — add to model in this phase.)*
+- [ ] **Rotation** — dropdown (0°, 90°, 180°, 270°). Default: 0°.
+- [ ] **Crop** — optional crop rectangle (x, y, width, height). Default: null (no crop).
+
+**Live preview and diagnostics:**
+- [ ] Live MJPEG preview per camera that reflects changes immediately on Apply (no page reload).
+- [ ] Live readout updated once per second: measured FPS, measured capture latency (ms), dropped frame count.
+- [ ] Exposure level indicator (reported effective exposure from driver if available).
+
+**Controls and affordances:**
+- [ ] **Apply** button per camera — re-opens camera at new settings, refreshes live preview and readout.
+- [ ] **Reset to defaults** button per camera — restores defaults from `D-019` / project defaults without touching other cameras.
+- [ ] **Apply to all 3 cameras** affordance for shared settings — useful since all three darts cams typically share the same lighting environment. Must prompt confirmation before overwriting per-camera settings.
+- [ ] **Save and proceed to calibration** button — saves all tuning to `cameras.yaml`, then navigates to the calibration UI.
+  - If a prior calibration exists AND any tuning fingerprint field has changed: show warning "Saving will invalidate your existing calibration. You will need to recalibrate before scoring." with a Confirm / Cancel option.
+  - If no prior calibration exists: proceed without warning.
+
+**Calibration invalidation (D-020):**
+- [ ] Changing any tuning field that contributes to the calibration fingerprint sets a per-camera "calibration stale" flag visible in the UI.
+- [ ] The tuning fingerprint fields are: resolution, rotation, crop, exposure (mode + value), gain, brightness, contrast, white balance (mode + value), gamma, saturation, sharpness, backlight compensation.
+- [ ] FPS change does NOT invalidate calibration but IS saved to config.
+
+**Responsiveness and access:**
+- [ ] Mobile-responsive layout: stacks vertically on phone-sized screens. 44px minimum tap targets. 16px minimum font on inputs (prevents iOS auto-zoom).
+- [ ] LAN accessible at `http://<host>:8765/tuning` with `--host 0.0.0.0`.
+- [ ] Vanilla JS only — no npm, no build step (per D-018 checklist).
 
 ## Phase 2: Camera Settings And Performance Profiles
 

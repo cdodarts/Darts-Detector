@@ -13,6 +13,7 @@ In order:
 3. Read `docs/AGENT_RULES.md` — rules every agent must follow.
 4. Read `docs/DECISIONS.md` — locked architectural decisions; never violate.
 5. Read `docs/AGENT_TEAM.md` — who does what.
+6. Read `docs/PROJECT_ETHOS.md` — who this project is for; DIY audience; system adapts to hardware.
 
 Then read the doc for whatever task you've been asked to do. Do not skip phases. Do not propose changes that conflict with `PROJECT_CHARTER.md` or `DECISIONS.md`.
 
@@ -53,7 +54,8 @@ Full rationale in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 | If you are doing… | Read first |
 | --- | --- |
-| Anything | `docs/PROJECT_CHARTER.md`, `docs/MASTER_PLAN.md`, `docs/AGENT_RULES.md`, `docs/DECISIONS.md` |
+| Anything | `docs/PROJECT_CHARTER.md`, `docs/MASTER_PLAN.md`, `docs/AGENT_RULES.md`, `docs/DECISIONS.md`, `docs/PROJECT_ETHOS.md` |
+| Project audience / hardware philosophy | `docs/PROJECT_ETHOS.md` |
 | Detection pipeline work | `docs/DETECTION_PIPELINE.md`, `docs/LATENCY_BUDGET.md` |
 | Hand / takeout / state machine | `docs/DETECTION_PIPELINE.md` (Phase 5.5 + Phase 7.5 sections) |
 | Calibration work | `docs/CALIBRATION_SYSTEM.md` |

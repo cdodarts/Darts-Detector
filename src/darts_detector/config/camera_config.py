@@ -63,6 +63,10 @@ class CameraEntry(BaseModel):
     rotation: int = Field(default=0, ge=0, lt=360)
     crop: Optional[CropRect] = None
     enabled: bool = True
+    # TODO-gamma: Add in Phase 1.5 — maps to cv2.CAP_PROP_GAMMA. Part of tuning fingerprint (D-020).
+    # TODO-saturation: Add in Phase 1.5 — maps to cv2.CAP_PROP_SATURATION. Part of tuning fingerprint.
+    # TODO-sharpness: Add in Phase 1.5 — maps to cv2.CAP_PROP_SHARPNESS. Part of tuning fingerprint.
+    # TODO-backlight: Add in Phase 1.5 — backlightCompensation bool, maps to cv2.CAP_PROP_BACKLIGHT. Part of tuning fingerprint.
 
     @field_validator("cameraId")
     @classmethod

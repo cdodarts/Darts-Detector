@@ -4,6 +4,8 @@ This document is the single source of truth for the darts detector project. Futu
 
 This project is a **long-lived open-source community project** modelled after OBS Studio and Blender. The [Project Charter](PROJECT_CHARTER.md) is the highest-authority document in this repo and overrides anything in this file that conflicts with it.
 
+**Project Ethos (2026-05-17):** This project is built for DIY users with varied hardware — different cameras, 3D-printed mounts, different lighting rigs. The system adapts to the user's hardware; the user does not adapt to the system. Every parameter that affects detection accuracy must be user-controllable through a great UI. See [PROJECT_ETHOS.md](PROJECT_ETHOS.md).
+
 ## Project Vision
 
 Build an open-source, high-accuracy, automatic steel-tip darts detection and scoring application for a DIY camera setup.
@@ -77,6 +79,7 @@ These decisions are locked. Full rationale lives in [DECISIONS.md](DECISIONS.md)
 - **Calibration self-test:** required before scoring is enabled (`D-008`).
 - **Latency budget:** per-stage, enforced from Phase 1 (`D-009`, [LATENCY_BUDGET.md](LATENCY_BUDGET.md)).
 - **FPS default:** 30 FPS; resolution default: 1280×720. User-configurable per camera (`D-019`).
+- **Image tuning precedes calibration:** exposure, brightness, gamma, WB, contrast, gain, and all image controls must be set before calibration. Calibration is invalidated if tuning changes. Profiles store a tuning fingerprint (`D-020`).
 - **Semi-/fully-automatic calibration:** post-MVP (`D-010`).
 - **Frontend stack:** browser-based HTML/JS served by FastAPI for all user-facing surfaces (`D-017`).
 - **UX quality:** every user-facing surface must be obvious on first use; painful setup is treated as a bug (`D-018`).
@@ -87,7 +90,7 @@ These decisions are locked. Full rationale lives in [DECISIONS.md](DECISIONS.md)
 | --- | --- | --- | --- |
 | 0 | Documentation and project setup only | **Complete** (2026-05-17) | Required docs exist, agree on MVP boundaries, and no production app code has been created. |
 | 1 | Camera capture from 3 cameras | **In progress** (2026-05-17) | Three configured cameras stream frames concurrently at the selected resolution and FPS. Per-stage timing instrumentation in place. |
-| 1.5 | Camera tuning UI | Not started | Per-camera resolution and FPS dropdowns (canonical menus per D-019), live preview, live measured FPS / latency / dropped-frame readout, Apply and Next buttons. Mobile-responsive. |
+| 1.5 | Camera tuning UI (resolution, FPS, exposure, white balance, gamma, and all image controls) | Not started | Per-camera dropdowns for ALL image controls (resolution, FPS, exposure, brightness, contrast, gain, gamma, white balance, saturation, sharpness, backlight compensation, rotation, crop). Live preview reflects changes on Apply. Live readout: measured FPS, latency, dropped frames, exposure level. "Apply to all cameras" affordance. "Save and proceed to calibration" with invalidation warning if prior calibration exists. Mobile-responsive. D-020: tuning before calibration enforced. |
 | 2 | Camera settings and performance profiles | Not started | Exposure, gain, brightness, contrast, white balance, resolution, and FPS can be applied and verified. Manual exposure/WB confirmed effective. |
 | 3 | Manual board calibration | Not started | User can mark required board points for all cameras and save/load a calibration profile. |
 | 3.5 | Calibration self-test | Not started | After calibration, projected board rings align with the real board in all three views; scoring is gated on user confirmation. |
@@ -188,6 +191,7 @@ Smoke tests should verify the smallest useful end-to-end behavior for that phase
 
 Highest authority:
 - [Project Charter](PROJECT_CHARTER.md) — identity, governance, non-negotiable principles.
+- [Project Ethos](PROJECT_ETHOS.md) — who this is for; why the system adapts to the user's hardware.
 - [Decisions](DECISIONS.md) — locked architectural decisions; read before suggesting changes.
 - [Versioning](VERSIONING.md) — semver policy for every contract; deprecation cycle.
 

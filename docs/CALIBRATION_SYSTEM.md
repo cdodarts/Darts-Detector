@@ -127,6 +127,7 @@ Recalibration is required when:
 - The dartboard moves or rotates.
 - Resolution, crop, or rotation changes.
   - **Resolution note (D-019):** Camera intrinsics (focal length, principal point in pixels) scale with resolution. A calibration captured at 1280×720 is invalid at 1920×1080. The camera tuning UI (Phase 1.5) must mark calibration stale and prompt the user to recalibrate whenever resolution changes.
+- **Any image tuning parameter changes** (exposure, gain, brightness, contrast, white balance, gamma, saturation, sharpness, backlight compensation). The tuning fingerprint stored in the profile will no longer match, and the system must auto-invalidate or warn. See `D-020` and the "Calibration Tuning Fingerprint" section above.
 - Overlays no longer match the board.
 - Accuracy metrics show systematic location error.
 

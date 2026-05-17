@@ -33,14 +33,24 @@ Each camera should have:
 - `role`: Logical role — one of `cam_1`, `cam_2`, `cam_3`.
 - `resolution`: Width and height.
 - `fps`: Target frames per second.
-- `exposure`: Manual exposure value where supported.
-- `gain`: Manual gain value where supported.
-- `brightness`.
-- `contrast`.
-- `whiteBalance`: Manual value or disabled auto mode where supported.
-- `rotation`: Degrees or enum.
-- `crop`: Optional crop rectangle.
+- `exposure`: `{mode: manual|auto, value: int|null}` — manual exposure value or auto. Locked to manual for MVP runtime (`D-020`).
+- `gain`: `int` — manual gain value. Default: 0.
+- `brightness`: `int` — brightness offset. Default: 0.
+- `contrast`: `int` — contrast level. Default: 0.
+- `whiteBalance`: `{mode: manual|auto, value: int|null}` — Kelvin value or auto. Locked to manual for MVP runtime (`D-020`).
+- `gamma`: `int|null` — gamma value. **TODO: not yet in Pydantic model (`camera_config.py`). Must be added in Phase 1.5.** Maps to `cv2.CAP_PROP_GAMMA`.
+- `saturation`: `int|null` — saturation level. **TODO: not yet in Pydantic model. Must be added in Phase 1.5.** Maps to `cv2.CAP_PROP_SATURATION`.
+- `sharpness`: `int|null` — sharpness level. **TODO: not yet in Pydantic model. Must be added in Phase 1.5.** Maps to `cv2.CAP_PROP_SHARPNESS`.
+- `backlightCompensation`: `bool` — enable/disable backlight compensation. Default: false. **TODO: not yet in Pydantic model. Must be added in Phase 1.5.** Maps to `cv2.CAP_PROP_BACKLIGHT`.
+- `rotation`: Degrees — one of 0, 90, 180, 270.
+- `crop`: Optional crop rectangle `{x, y, width, height}`.
 - `enabled`: Whether the camera is active.
+
+**Fields currently in the Pydantic model (`camera_config.CameraEntry`):** `cameraId`, `name`, `friendlyName`, `devicePath`, `role`, `resolution`, `fps`, `exposure`, `gain`, `brightness`, `contrast`, `whiteBalance`, `rotation`, `crop`, `enabled`.
+
+**Fields NOT yet in the model (to be added in Phase 1.5):** `gamma`, `saturation`, `sharpness`, `backlightCompensation`. These are placeholders — the schema is designed to accept them additively without breaking changes.
+
+All tuning fields that affect the camera image (resolution, rotation, crop, exposure, gain, brightness, contrast, whiteBalance, gamma, saturation, sharpness, backlightCompensation) contribute to the calibration tuning fingerprint (`D-020`). See `docs/CALIBRATION_SYSTEM.md`.
 
 Camera IDs must remain stable because calibration profiles depend on them.
 
