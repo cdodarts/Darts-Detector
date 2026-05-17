@@ -54,7 +54,7 @@ class CameraEntry(BaseModel):
     devicePath: str = ""
     role: CameraRole
     resolution: CameraResolution = CameraResolution(width=1280, height=720)
-    fps: int = Field(default=60, gt=0)
+    fps: int = Field(default=30, gt=0)  # D-019: default 30 FPS; was 60
     exposure: ExposureConfig = ExposureConfig(mode="manual", value=100)
     gain: int = 0
     brightness: int = 0

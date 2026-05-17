@@ -6,6 +6,7 @@ darts_detector.diagnostics.latency — per-stage latency timer and JSONL logger.
 
 Records per-stage elapsed times to a JSONL log file and emits warnings when a
 stage exceeds its budget. Stage budgets come from docs/LATENCY_BUDGET.md.
+(capture: 100 ms at 30 FPS default per D-019; was 50 ms at 60 FPS)
 
   - WARNING logged if elapsed > 1.5x budget  (D-009, LATENCY_BUDGET.md)
   - ERROR   logged if elapsed > 2.0x budget  (treated as regression)
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Default stage budgets from docs/LATENCY_BUDGET.md (Pi 5 4GB target, ms)
 DEFAULT_STAGE_BUDGETS: dict[str, float] = {
-    "capture": 50.0,
+    "capture": 100.0,
     "motion": 200.0,
     "diff": 60.0,
     "candidate": 80.0,

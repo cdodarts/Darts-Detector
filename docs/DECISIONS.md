@@ -134,6 +134,44 @@ Format: lightweight ADR. Status values: `accepted`, `superseded`, `deprecated`.
 - **Why:** Matches the no-runtime-ML rule (`D-001`). A hand covers a large fraction of the board area; a dart does not. The signal is robust to lighting changes that have already been controlled by manual exposure (`D-002`-adjacent).
 - **Consequences:** Threshold tuned against a labelled dataset of hand-in / hand-out cases. Edge case: player wearing a darts shirt that visually resembles the board background — flagged as a known limitation in [RISKS.md](RISKS.md), debounced over multiple frames.
 
+## D-017: Browser-Based HTML Frontend For All User-Facing Surfaces
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** All user-facing UI — camera picker, calibration assistant, operator/debug console, and scoring display — is delivered as a browser-based HTML/JS page served by the project's local FastAPI server. No native desktop GUI. No tkinter, no PySide6, no Electron.
+- **Why:** Aligns with the WebSocket/JSON contract (`API_AND_WEBSOCKET_CONTRACT.md`, `D-006`). Works headlessly on the Raspberry Pi 5 over LAN — the user opens a browser on any machine on the same network. Gives an Autodarts-style UX that users already understand. Single UI delivery stack means no second toolkit to maintain. FastAPI is already load-bearing for the data API; extending it to serve static assets costs nothing architecturally.
+- **Consequences:** FastAPI is now load-bearing for the operator experience, not just the data API. UI changes ship as static assets served under `src/darts_detector/ui/` (Jinja2 templates + static files). Each UI surface lives in its own subdirectory (`ui/camera_picker/`, `ui/calibration/`, `ui/debug/`). The camera picker entry point opens the browser automatically on first run. The calibration assistant and debug console will follow the same pattern in their respective phases.
+
+## D-018: UX Quality Is A First-Class Requirement
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** Every user-facing surface must be designed to be obvious on first use. A feature that works correctly but is painful to set up will be treated as broken.
+- **Why:** The user's exact words: "users will not use it if it is hard to setup." An open-source project with a hard setup experience will not build a community. The camera picker, calibration workflow, and operator display are the first things a new user sees; they set the tone for the entire project.
+- **UX Quality Checklist (binding for every phase that ships a UI surface):**
+  1. **Visible state** — every screen shows the current system state. No silent waiting.
+  2. **Live feedback** — actions produce immediate visual confirmation (e.g. camera preview updates when the user changes a dropdown).
+  3. **Plain-language errors** — errors are explained in terms a non-developer understands. No raw exception tracebacks in the UI.
+  4. **Sensible defaults** — fields are pre-filled with the most common values. The user should be able to click through without reading docs.
+  5. **No required CLI step for first-time setup** — the recommended flow for a new user must be achievable entirely through the browser UI.
+  6. **LAN accessible** — the UI must work from any browser on the same network (not just `localhost`). Useful when the Pi is headless.
+  7. **No external JS frameworks** — vanilla JS only, no npm, no build step. Keeps the project dependency footprint minimal and the UI auditable.
+- **Consequences:** Phases 1 (camera picker), 3/3.5 (calibration assistant), 9 (debug UI), and any future operator display must be reviewed against this checklist before the phase is declared complete. `test-qa` includes a UX checklist review as part of phase sign-off.
+
+## D-019: User-Configurable Per-Camera Resolution And FPS; 30 FPS As Default Baseline
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** `cameras.yaml` supports a per-camera `resolution` (from canonical menu: 1920×1080, 1280×720, 800×600, 640×480) and `fps` (from canonical menu: 60, 30, 25, 20, 15). **Defaults: 1280×720 @ 30 FPS.** The project does NOT require 60 FPS for accuracy targets; 25 FPS gives acceptable accuracy per well-established deterministic darts scoring implementations.
+- **Why:** User hardware varies widely (laptop webcam to dedicated Raspberry Pi rig). Autodarts and comparable deterministic systems run at 25–30 FPS. A thrown dart tip is stationary for many frames after impact — the pipeline depends on settling-period geometry, not sub-30 FPS motion capture. Forcing 60 FPS as a baseline raises USB bandwidth requirements unnecessarily and causes the Phase 1 smoke test to fail on typical laptop webcams.
+- **Consequences:**
+  - Default FPS changes from 60 to 30 in `cameras.yaml` defaults, in `config/cameras.yaml` examples, and in all profile examples.
+  - Latency budget in `LATENCY_BUDGET.md` is re-derived for 30 FPS (33.3 ms frame interval); the 60 FPS budget is preserved for reference tagged with its regime.
+  - The camera tuning UI (Phase 1.5, added by this decision) must present discrete resolution and FPS menus from the canonical lists above rather than free-text fields.
+  - Calibration must be regenerated whenever resolution changes (intrinsics depend on resolution); the UI must enforce this.
+  - Accuracy target (~98%) applies across the full envelope (down to 640×480 @ 15 FPS). Detection geometry must not assume a fixed resolution.
+- **Supersedes:** The 60 FPS assumption implicit in `LATENCY_BUDGET.md`'s original capture budget and in the `cameras.yaml` example in `CONFIGURATION.md`. Those documents are updated in the same change; original values are preserved with "prior to D-019" labels where useful.
+
 ---
 
 ## How To Add A Decision

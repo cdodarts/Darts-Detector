@@ -76,6 +76,7 @@ These decisions are locked. Full rationale lives in [DECISIONS.md](DECISIONS.md)
 - **Replay tooling:** lands before detection phases (`D-007`).
 - **Calibration self-test:** required before scoring is enabled (`D-008`).
 - **Latency budget:** per-stage, enforced from Phase 1 (`D-009`, [LATENCY_BUDGET.md](LATENCY_BUDGET.md)).
+- **FPS default:** 30 FPS; resolution default: 1280×720. User-configurable per camera (`D-019`).
 - **Semi-/fully-automatic calibration:** post-MVP (`D-010`).
 - **Frontend stack:** browser-based HTML/JS served by FastAPI for all user-facing surfaces (`D-017`).
 - **UX quality:** every user-facing surface must be obvious on first use; painful setup is treated as a bug (`D-018`).
@@ -86,6 +87,7 @@ These decisions are locked. Full rationale lives in [DECISIONS.md](DECISIONS.md)
 | --- | --- | --- | --- |
 | 0 | Documentation and project setup only | **Complete** (2026-05-17) | Required docs exist, agree on MVP boundaries, and no production app code has been created. |
 | 1 | Camera capture from 3 cameras | **In progress** (2026-05-17) | Three configured cameras stream frames concurrently at the selected resolution and FPS. Per-stage timing instrumentation in place. |
+| 1.5 | Camera tuning UI | Not started | Per-camera resolution and FPS dropdowns (canonical menus per D-019), live preview, live measured FPS / latency / dropped-frame readout, Apply and Next buttons. Mobile-responsive. |
 | 2 | Camera settings and performance profiles | Not started | Exposure, gain, brightness, contrast, white balance, resolution, and FPS can be applied and verified. Manual exposure/WB confirmed effective. |
 | 3 | Manual board calibration | Not started | User can mark required board points for all cameras and save/load a calibration profile. |
 | 3.5 | Calibration self-test | Not started | After calibration, projected board rings align with the real board in all three views; scoring is gated on user confirmation. |
@@ -106,7 +108,8 @@ These decisions are locked. Full rationale lives in [DECISIONS.md](DECISIONS.md)
 
 To shorten the critical path without compromising quality:
 
-- **Phases 2 and 3 may run in parallel** once Phase 1 is complete. Camera settings and manual calibration share no runtime code path.
+- **Phase 1.5 may run in parallel with Phase 2** once Phase 1 is complete. Camera tuning UI and camera settings/performance profiles share no runtime code path.
+- **Phases 2 and 3 may run in parallel** once Phase 1.5 is complete. Camera settings and manual calibration share no runtime code path.
 - **Phase 11 (research)** may run as a separate research track from the start. It does not block MVP.
 - **Phase 4.5** is sized as a half-phase and may be built alongside Phase 4 if capacity allows.
 
@@ -143,6 +146,8 @@ All required documentation files exist, scope is constrained, agent rules are in
 **Camera role rename (2026-05-17):** Camera roles renamed from `cam_left`/`cam_center`/`cam_right` to `cam_1`/`cam_2`/`cam_3` in all code, config, templates, and docs. Three cameras at 120° do not have a meaningful left/center/right. Display labels updated to "Camera 1/2/3".
 
 **Mobile responsive picker (2026-05-17):** Camera picker page made fully responsive for phone-sized screens. Panels stack vertically below 768px, side-by-side above. 16px minimum font on selects (prevents iOS auto-zoom), 44px minimum tap targets. LAN access supported via `--host 0.0.0.0`; terminal prints LAN URL for phone access.
+
+**D-019 locked (2026-05-17):** Default FPS changed to 30 (was 60). Resolution default remains 1280×720. Canonical menus locked: resolutions 1920×1080, 1280×720, 800×600, 640×480; FPS values 60, 30, 25, 20, 15. Capture-stage latency budget updated to 100 ms (30 FPS regime) in `LATENCY_BUDGET.md` and `diagnostics/latency.py`. Phase 1.5 (camera tuning UI) added to the phase sequence. Smoke test now PASSES on laptop webcam delivering ~30 FPS.
 
 **Phase 1 smoke test:**
 Opens all 3 cameras using the config, captures for 30 seconds, asserts measured FPS >= configured FPS - 5%, asserts per-stage latency (capture → frame-available) is logged for every frame and within budget per `LATENCY_BUDGET.md`.

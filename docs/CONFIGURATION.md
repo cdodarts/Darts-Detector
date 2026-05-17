@@ -46,14 +46,34 @@ Camera IDs must remain stable because calibration profiles depend on them.
 
 ## Resolution And FPS
 
-Resolution and FPS should be selected with target hardware limits in mind.
+Resolution and FPS should be selected with target hardware limits in mind. Both fields are per-camera and set via the camera tuning UI (Phase 1.5) or by hand-editing `cameras.yaml`.
+
+**Canonical resolution menu** (only these values are accepted in `cameras.yaml` and in the UI dropdowns):
+
+| Value | Width × Height | Notes |
+| --- | --- | --- |
+| `1920x1080` | 1920 × 1080 | Full HD. High USB bandwidth. |
+| `1280x720` | 1280 × 720 | **Default (D-019).** Balanced quality and bandwidth. |
+| `800x600` | 800 × 600 | Lower bandwidth; adequate for most detection. |
+| `640x480` | 640 × 480 | Low bandwidth; minimum usable. |
+
+**Canonical FPS menu** (only these values are accepted):
+
+| Value | Notes |
+| --- | --- |
+| 60 | Optional/aspirational. High USB bandwidth. |
+| 30 | **Default (D-019).** Balanced. |
+| 25 | Acceptable minimum per D-019. |
+| 20 | Low-end; accuracy claims require replay-dataset verification. |
+| 15 | Minimum; hardware-constrained only. |
 
 Rules:
 
-- The selected settings must support three simultaneous streams.
+- The selected settings must support three simultaneous streams within USB bandwidth limits.
 - Higher resolution is useful only if detection accuracy improves enough to justify the cost.
 - FPS must be high enough to detect motion and settling reliably.
 - Effective applied settings should be reported at runtime.
+- Resolution and FPS are configurable from the camera tuning UI (Phase 1.5) with live measured FPS readout and dropped-frame count.
 
 ## Exposure, Gain, And Lighting
 
@@ -160,7 +180,7 @@ cameras:
     name: Left camera
     devicePath: /dev/video0
     resolution: { width: 1280, height: 720 }
-    fps: 60
+    fps: 30
     exposure: { mode: manual, value: 100 }
     gain: 0
     brightness: 0
@@ -173,7 +193,7 @@ cameras:
     name: Right camera
     devicePath: /dev/video2
     resolution: { width: 1280, height: 720 }
-    fps: 60
+    fps: 30
     exposure: { mode: manual, value: 100 }
     gain: 0
     brightness: 0
@@ -186,7 +206,7 @@ cameras:
     name: Top camera
     devicePath: /dev/video4
     resolution: { width: 1280, height: 720 }
-    fps: 60
+    fps: 30
     exposure: { mode: manual, value: 100 }
     gain: 0
     brightness: 0
@@ -211,7 +231,7 @@ saveFailedFrames: true
 saveLowConfidenceFrames: true
 saveAllFrames: false
 maxStageMs:
-  capture: 50
+  capture: 100
   motion: 200
   diff: 60
   candidate: 80

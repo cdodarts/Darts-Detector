@@ -12,8 +12,9 @@ Locked decisions ([DECISIONS.md](DECISIONS.md)) apply to every phase:
 
 | Group | Phases | Notes |
 | --- | --- | --- |
-| Sequential foundation | 0 → 1 | Cannot start coding until docs and decisions are locked. |
-| Parallel pair | 2 ∥ 3 | Camera settings and manual calibration may run side-by-side after Phase 1. |
+| Sequential foundation | 0 → 1 → 1.5 | Cannot start coding until docs and decisions are locked. Phase 1.5 (camera tuning UI) follows camera picker. |
+| Parallel pair | 1.5 ∥ 2 | Camera tuning UI and camera settings/performance profiles may run side-by-side after Phase 1. |
+| Parallel pair | 2 ∥ 3 | Camera settings and manual calibration may run side-by-side after Phase 1.5. |
 | Sequential calibration gate | 3 → 3.5 | Self-test must follow calibration. |
 | Parallel pair | 4 ∥ 4.5 | Scoring engine and frame recorder are independent. |
 | Sequential detection chain | 5 → 5.5 → 6 → 7 | Tightly coupled — run with shared replay dataset for fast iteration. |
@@ -62,6 +63,20 @@ For environments without a browser (headless Pi 5, SSH session), run `uv run pyt
 
 **Startup camera matching:**
 At startup, the capture module filters detected cameras by `friendlyName` first, then matches `devicePath` to assign roles `cam_1`, `cam_2`, `cam_3`.
+
+## Phase 1.5: Camera Tuning UI
+
+| Item | Detail |
+| --- | --- |
+| Objective | Provide a browser-based UI page where the user selects resolution and FPS per camera, sees a live preview at those settings, and views real-time performance diagnostics before proceeding to calibration. |
+| Inputs | `config/cameras.yaml` written by Phase 1 camera picker; selected resolution and FPS from UI dropdowns. |
+| Outputs | Updated `config/cameras.yaml` with the user's chosen resolution and FPS per camera; live performance readout (measured FPS, capture latency, dropped frames). |
+| Acceptance Criteria | (1) Per-camera dropdowns present the canonical resolution and FPS menus from D-019. (2) Apply button re-opens the camera at the new settings and refreshes the live readout. (3) Live readout updates once per second: measured FPS, measured capture latency, dropped-frame count. (4) Next button advances to calibration. (5) If resolution changes, calibration is marked stale and the user is warned. (6) Page is mobile-responsive per D-018. |
+| Smoke Test | With a connected camera: open the tuning UI, change resolution to 640×480 @ 15 FPS, click Apply, confirm live readout shows ~15 FPS. Change back to 1280×720 @ 30 FPS, Apply, confirm ~30 FPS. Click Next, confirm navigation to calibration page. |
+| Common Failure Cases | Camera does not support requested resolution/FPS (fall back to nearest available and report it); live readout stalls if no frames arrive; calibration stale flag not set on resolution change; dropdowns show unsupported combinations for the hardware. |
+| Files/modules likely involved | `src/darts_detector/ui/camera_tuning/`, `src/darts_detector/capture/`, `src/darts_detector/diagnostics/latency.py`, `src/darts_detector/config/camera_config.py`. |
+| Must Not Be Built Yet | Calibration UI (Phase 3), exposure/gain/white-balance tuning (Phase 2). |
+| UI Note | Must meet UX quality checklist in D-018: visible state, live feedback, plain-language errors, sensible defaults (1280×720 @ 30 FPS pre-filled), no required CLI step. LAN accessible. |
 
 ## Phase 2: Camera Settings And Performance Profiles
 

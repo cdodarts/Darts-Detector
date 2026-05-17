@@ -6,7 +6,7 @@ Acceptance criteria (docs/PHASED_IMPLEMENTATION.md Phase 1):
   - Three configured cameras stream concurrently without blocking each other.
   - Measured FPS >= configured FPS - 5% for every active camera.
   - Per-stage latency (capture → frame-available) is logged for every frame
-    and remains within budget (50 ms) per docs/LATENCY_BUDGET.md.
+    and remains within budget (100 ms at 30 FPS default, per D-019) per docs/LATENCY_BUDGET.md.
 
 HOW TO RUN (full 3-camera test):
     uv run pytest tests/smoke/test_phase1_capture.py -v
@@ -32,32 +32,7 @@ from pathlib import Path
 import pytest
 
 # ---------------------------------------------------------------------------
-# pytest CLI options
-# ---------------------------------------------------------------------------
-
-def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption(
-        "--cameras",
-        type=int,
-        default=3,
-        help="Number of cameras to test (1, 2, or 3). Default: 3.",
-    )
-    parser.addoption(
-        "--duration",
-        type=float,
-        default=30.0,
-        help="Capture duration in seconds. Default: 30.",
-    )
-    parser.addoption(
-        "--config",
-        type=str,
-        default="config/cameras.yaml",
-        help="Path to cameras.yaml. Default: config/cameras.yaml.",
-    )
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
+# Fixtures (CLI options registered in tests/conftest.py)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -258,18 +233,18 @@ def test_phase1_three_camera_capture(
     # Log budget compliance summary.
     over_budget = [e for e in capture_entries if e.get("over_budget")]
     log.info(
-        "Capture latency: %d entries, %d over 50 ms budget (%.1f%%)",
+        "Capture latency: %d entries, %d over 100 ms budget (%.1f%%)",
         len(capture_entries),
         len(over_budget),
         100 * len(over_budget) / max(len(capture_entries), 1),
     )
 
-    # On the development Windows machine the latency budget (50 ms) is aspirational
-    # for Pi 5. We assert that > 80% of frames are within budget; this is a
-    # sanity check rather than a hard Pi 5 SLO.
+    # On the development Windows machine the latency budget (100 ms at 30 FPS default,
+    # per D-019) is aspirational for Pi 5. We assert that > 80% of frames are within
+    # budget; this is a sanity check rather than a hard Pi 5 SLO.
     pct_within = 1 - (len(over_budget) / max(len(capture_entries), 1))
     assert pct_within >= 0.80, (
-        f"Only {pct_within*100:.1f}% of capture frames within 50 ms budget "
+        f"Only {pct_within*100:.1f}% of capture frames within 100 ms budget "
         f"(required >= 80%). Consider checking USB bandwidth or resolution."
     )
 

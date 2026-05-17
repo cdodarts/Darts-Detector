@@ -47,13 +47,16 @@ _STATIC_DIR = _HERE / "static"
 # Config is always written to <repo-root>/config/cameras.yaml.
 # We walk up from the package src tree to find the repo root.
 def _find_config_dir() -> Path:
-    """Locate the config/ directory relative to the installed package tree."""
+    """Locate the project's config/ directory by anchoring to pyproject.toml.
+
+    Walks up from this file until it finds a directory containing pyproject.toml
+    (the repo root), then returns <repo-root>/config. Falls back to cwd/config.
+    """
     candidate = Path(__file__).resolve()
     for _ in range(10):
         candidate = candidate.parent
-        if (candidate / "config").is_dir():
+        if (candidate / "pyproject.toml").is_file():
             return candidate / "config"
-    # Fallback: create config/ next to pyproject.toml in cwd
     return Path.cwd() / "config"
 
 
@@ -250,7 +253,7 @@ async def save_config(
                 "devicePath": "",
                 "role": role_id,
                 "resolution": {"width": 1280, "height": 720},
-                "fps": 60,
+                "fps": 30,
                 "exposure": {"mode": "manual", "value": 100},
                 "gain": 0,
                 "brightness": 0,
@@ -267,7 +270,7 @@ async def save_config(
             "devicePath": cam.device_path,
             "role": role_id,
             "resolution": {"width": 1280, "height": 720},
-            "fps": 60,
+            "fps": 30,
             "exposure": {"mode": "manual", "value": 100},
             "gain": 0,
             "brightness": 0,

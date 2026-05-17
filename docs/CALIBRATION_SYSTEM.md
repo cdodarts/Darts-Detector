@@ -71,6 +71,7 @@ A calibration profile should include:
 - Creation and update timestamps.
 - Camera IDs and names.
 - Resolution, rotation, and crop used during calibration.
+- `fps` at time of calibration (informational; does not invalidate calibration, but logged for diagnostics).
 - Marked calibration points for each camera.
 - Computed mapping parameters.
 - Validation metrics.
@@ -85,6 +86,7 @@ Recalibration is required when:
 - A camera moves.
 - The dartboard moves or rotates.
 - Resolution, crop, or rotation changes.
+  - **Resolution note (D-019):** Camera intrinsics (focal length, principal point in pixels) scale with resolution. A calibration captured at 1280×720 is invalid at 1920×1080. The camera tuning UI (Phase 1.5) must mark calibration stale and prompt the user to recalibrate whenever resolution changes.
 - Overlays no longer match the board.
 - Accuracy metrics show systematic location error.
 
