@@ -35,7 +35,18 @@ darts-detector/
         overlays/
         replay/
       diagnostics/              # Logging, metrics, latency timers (@internal)
+      ui/                       # Browser-based HTML/JS UI served by FastAPI (D-017, @internal)
+        camera_picker/          # Phase 1 — camera selection and preview
+          app.py                #   FastAPI app: GET /, GET /preview/{device_id}, POST /save
+          templates/
+            picker.html         #   Jinja2 template — role dropdowns + MJPEG previews
+          static/
+            picker.css          #   Minimal vanilla CSS
+            picker.js           #   Vanilla JS — swap preview src on dropdown change
+        calibration/            # Phase 3/3.5 — calibration assistant (future)
+        debug/                  # Phase 9 — debug/replay UI (future)
       cli/                      # Entry points (@internal)
+        camera_picker.py        # Phase 1 — starts FastAPI + opens browser, writes cameras.yaml
   plugins/                      # In-tree plugins (post-MVP)
     examples/                   # Example WebSocket consumers in various languages
   config/

@@ -52,27 +52,35 @@ def _get_lan_ip() -> str:
 def main(host: str = _DEFAULT_HOST, port: int = _DEFAULT_PORT) -> None:
     """Start the camera picker server and open the browser."""
     localhost_url = f"http://127.0.0.1:{port}"
+    lan_ip = _get_lan_ip() if host == "0.0.0.0" else ""
+    lan_url = f"http://{lan_ip}:{port}" if lan_ip else ""
+
+    print(f"\nDarts Detector — Camera Picker")
+    if host == "0.0.0.0":
+        print(f"  Server bound to all interfaces on port {port}")
+        print(f"  On this PC:           {localhost_url}")
+        if lan_url:
+            print(f"  On phone / tablet:    {lan_url}    (same Wi-Fi required)")
+        else:
+            print(f"  LAN IP could not be determined — run 'ipconfig' to find it.")
+    else:
+        print(f"  Server starting at {localhost_url}")
+        print(f"  (For phone access, relaunch with: camera-picker --host 0.0.0.0)")
+    print(f"  Select your cameras, then click Save Configuration.")
+    print(f"  Press Ctrl+C to cancel without saving.\n")
 
     config = uvicorn.Config(
         app,
         host=host,
         port=port,
-        log_level="warning",  # Keep stdout clean — we're a UI tool.
+        log_level="warning",
         access_log=False,
     )
     server = uvicorn.Server(config)
 
-    # Open the browser shortly after the server starts.
+    # Open the local browser shortly after the server starts.
     def _open_browser() -> None:
-        # Give uvicorn time to bind the socket.
         time.sleep(1.2)
-        print(f"  Opening browser at {localhost_url}")
-        if host == "0.0.0.0":
-            lan_ip = _get_lan_ip()
-            if lan_ip:
-                print(f"  LAN URL (for phone/tablet on same network): http://{lan_ip}:{port}")
-        print("  Select your cameras, then click Save Configuration.")
-        print("  Press Ctrl+C to cancel without saving.")
         webbrowser.open(localhost_url)
 
     browser_thread = threading.Thread(target=_open_browser, daemon=True)
@@ -84,9 +92,6 @@ def main(host: str = _DEFAULT_HOST, port: int = _DEFAULT_PORT) -> None:
         server.should_exit = True
 
     shutdown_thread = threading.Thread(target=_watch_shutdown, daemon=True)
-
-    print(f"\nDarts Detector — Camera Picker")
-    print(f"  Server starting at {localhost_url} ...")
 
     browser_thread.start()
     shutdown_thread.start()

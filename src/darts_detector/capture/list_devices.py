@@ -4,11 +4,17 @@ darts_detector.capture.list_devices — enumerate DirectShow/UVC cameras on Wind
 
 @internal
 
-Run this CLI once to identify your three 'Autodarts DIY Cam' devices and their
-USB device instance paths. Copy those paths into config/cameras.yaml under the
-correct cam_left / cam_center / cam_right entries.
+Exposes two public surfaces:
 
-Usage:
+1. ``enumerate_cameras()`` — returns a list of :class:`CameraDevice` objects.
+   Called by the browser-based camera picker UI and any other module that needs
+   to list available cameras.
+
+2. ``main()`` / CLI — thin wrapper around ``enumerate_cameras()`` that pretty-
+   prints the result.  Useful for headless debugging (no browser) on a Pi 5 or
+   SSH session.
+
+Usage (CLI):
     uv run python -m darts_detector.capture.list_devices
 
 Output columns:
@@ -21,7 +27,7 @@ Output columns:
 The 'Device Path' column is the stable USB instance path you need for cameras.yaml.
 It does NOT change as long as you keep each camera plugged into the same physical port.
 
-pygrabber (pip install pygrabber) is used for friendly-name lookup when available.
+pygrabber (uv add pygrabber) is used for friendly-name lookup when available.
 Without it, names fall back to 'Camera <index>'. Device-path lookup uses the
 Windows Device Manager COM API via comtypes when available; otherwise it reports
 'unavailable' and you can identify cameras visually from the frame preview note.
@@ -32,9 +38,19 @@ from __future__ import annotations
 import platform
 import sys
 import time
+from dataclasses import dataclass
 from typing import Optional
 
 import cv2
+
+# Suppress noisy DSHOW probe warnings emitted by cv2.VideoCapture during
+# index enumeration ("backend is generally available but can't be used to
+# capture by index"). These are expected — we probe past the real device
+# count by design — and not actionable for users.
+try:
+    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+except Exception:
+    pass
 
 # ---------------------------------------------------------------------------
 # Optional imports — degrade gracefully if not installed.
@@ -57,6 +73,48 @@ except ImportError:
 DARTS_CAM_FRIENDLY_NAME = "Autodarts DIY Cam"
 _MAX_PROBE_INDEX = 15  # probe indices 0–15
 
+
+@dataclass
+class CameraDevice:
+    """All available information about one enumerated camera device.
+
+    Fields
+    ------
+    index:
+        DirectShow (or V4L2 on Linux) device index used by ``cv2.VideoCapture``.
+    friendly_name:
+        Human-readable name from the OS / DirectShow enumeration.
+    device_path:
+        Stable USB device instance path (Windows) or ``/dev/videoN`` (Linux).
+        ``"unavailable"`` when the OS query fails.
+    is_darts_cam:
+        ``True`` when ``friendly_name`` contains the expected Autodarts camera
+        substring — used by startup to filter out other webcams.
+    opened:
+        Whether ``cv2.VideoCapture`` could open this index.
+    frame_ok:
+        Whether at least one frame was grabbed successfully during enumeration.
+    """
+
+    index: int
+    friendly_name: str
+    device_path: str
+    is_darts_cam: bool
+    opened: bool
+    frame_ok: bool
+
+    @property
+    def label(self) -> str:
+        """Short display label for UI dropdowns: ``"<index>: <name>"``.
+
+        Example: ``"0: Autodarts DIY Cam"``
+        """
+        return f"{self.index}: {self.friendly_name}"
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 def _get_friendly_names_pygrabber() -> dict[int, str]:
     """Return {index: friendly_name} using pygrabber's DirectShow enumeration."""
@@ -84,7 +142,6 @@ def _get_device_paths_windows() -> dict[str, str]:
         wmi = comtypes.client.CreateObject("WbemScripting.SWbemLocator")
         svc = wmi.ConnectServer(".", "root\\cimv2")
         result: dict[str, str] = {}
-        # Query USB video devices
         query = svc.ExecQuery(
             "SELECT Name, DeviceID FROM Win32_PnPEntity "
             "WHERE PNPClass = 'Camera' OR PNPClass = 'Image' OR Service = 'usbvideo'"
@@ -99,12 +156,23 @@ def _get_device_paths_windows() -> dict[str, str]:
         return {}
 
 
-def probe_cameras() -> list[dict]:
-    """
-    Probe camera indices 0–_MAX_PROBE_INDEX and return info for each that opens.
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
-    Returns a list of dicts with keys:
-        index, friendly_name, device_path, is_darts_cam, opened, frame_ok
+def enumerate_cameras() -> list[CameraDevice]:
+    """Probe all camera indices and return a list of :class:`CameraDevice`.
+
+    This is the primary public surface. Called by the camera picker UI,
+    the startup matcher, and any other module that needs to list available
+    cameras.
+
+    The function opens each device index briefly to confirm it is alive,
+    grabs one frame for health-check, then releases the handle immediately.
+    Total probe time is typically 2–5 seconds depending on the number of
+    attached devices.
+
+    Returns an empty list if no cameras are detected.
     """
     is_windows = platform.system() == "Windows"
     backend = cv2.CAP_DSHOW if is_windows else cv2.CAP_ANY
@@ -112,7 +180,7 @@ def probe_cameras() -> list[dict]:
     friendly_names = _get_friendly_names_pygrabber()
     device_paths = _get_device_paths_windows()
 
-    results: list[dict] = []
+    results: list[CameraDevice] = []
 
     for idx in range(_MAX_PROBE_INDEX + 1):
         cap = cv2.VideoCapture(idx, backend)
@@ -120,13 +188,11 @@ def probe_cameras() -> list[dict]:
             cap.release()
             continue
 
-        # Try to grab one frame to confirm the device is live.
-        frame_ok = cap.grab()
+        frame_ok = bool(cap.grab())
 
         friendly = friendly_names.get(idx, f"Camera {idx}")
-        # Look up device path by friendly name (best-effort).
+
         dev_path = device_paths.get(friendly, "unavailable — run Device Manager")
-        # Also try partial match if exact match fails.
         if dev_path.startswith("unavailable"):
             for k, v in device_paths.items():
                 if friendly.lower() in k.lower() or k.lower() in friendly.lower():
@@ -136,14 +202,14 @@ def probe_cameras() -> list[dict]:
         is_darts_cam = DARTS_CAM_FRIENDLY_NAME.lower() in friendly.lower()
 
         results.append(
-            {
-                "index": idx,
-                "friendly_name": friendly,
-                "device_path": dev_path,
-                "is_darts_cam": is_darts_cam,
-                "opened": True,
-                "frame_ok": bool(frame_ok),
-            }
+            CameraDevice(
+                index=idx,
+                friendly_name=friendly,
+                device_path=dev_path,
+                is_darts_cam=is_darts_cam,
+                opened=True,
+                frame_ok=frame_ok,
+            )
         )
         cap.release()
         # Brief pause between opens to avoid overwhelming DirectShow.
@@ -152,16 +218,19 @@ def probe_cameras() -> list[dict]:
     return results
 
 
-def print_device_table(devices: list[dict]) -> None:
+# ---------------------------------------------------------------------------
+# CLI formatting (kept for headless / SSH debugging)
+# ---------------------------------------------------------------------------
+
+def _print_device_table(devices: list[CameraDevice]) -> None:
     """Pretty-print the device table to stdout."""
     if not devices:
         print("No cameras found. Check USB connections.")
         return
 
     col_idx = 5
-    col_name = max(len(d["friendly_name"]) for d in devices) + 2
-    col_path = max(len(d["device_path"]) for d in devices) + 2
-    col_note = 20
+    col_name = max(len(d.friendly_name) for d in devices) + 2
+    col_path = max(len(d.device_path) for d in devices) + 2
 
     header = (
         f"{'Idx':<{col_idx}}  "
@@ -175,32 +244,31 @@ def print_device_table(devices: list[dict]) -> None:
 
     for d in devices:
         note_parts = []
-        if not d["frame_ok"]:
+        if not d.frame_ok:
             note_parts.append("no frame")
-        if d["is_darts_cam"]:
+        if d.is_darts_cam:
             note_parts.append("** DARTS CAM **")
         note = "  ".join(note_parts)
 
-        name_display = d["friendly_name"]
         row = (
-            f"{d['index']:<{col_idx}}  "
-            f"{name_display:<{col_name}}  "
-            f"{d['device_path']:<{col_path}}  "
+            f"{d.index:<{col_idx}}  "
+            f"{d.friendly_name:<{col_name}}  "
+            f"{d.device_path:<{col_path}}  "
             f"{note}"
         )
         print(row)
 
     print()
 
-    darts_cams = [d for d in devices if d["is_darts_cam"]]
+    darts_cams = [d for d in devices if d.is_darts_cam]
     if darts_cams:
         print(f"Found {len(darts_cams)} 'Autodarts DIY Cam' device(s).")
         if len(darts_cams) == 3:
             print(
-                "All three darts cameras detected. Copy their Device Path values "
-                "into config/cameras.yaml under cam_left, cam_center, cam_right."
+                "All three darts cameras detected. Run the camera picker to assign "
+                "roles:\n  uv run python -m darts_detector.cli.camera_picker"
             )
-        elif len(darts_cams) < 3:
+        else:
             print(
                 f"WARNING: Expected 3 darts cameras, found {len(darts_cams)}. "
                 "Check USB connections."
@@ -224,15 +292,20 @@ def print_device_table(devices: list[dict]) -> None:
 
 
 def main() -> None:
-    """Entry point: enumerate cameras and print a human-readable table."""
+    """CLI entry point: enumerate cameras and print a human-readable table.
+
+    For headless or SSH environments where the browser-based picker is not
+    available.  Recommended flow for GUI environments:
+        uv run python -m darts_detector.cli.camera_picker
+    """
     if platform.system() != "Windows":
         print(
             "WARNING: This tool is designed for Windows (DirectShow). "
             "On Linux, device paths are /dev/videoN."
         )
     print("Probing camera devices (indices 0–15). This may take a few seconds...")
-    devices = probe_cameras()
-    print_device_table(devices)
+    devices = enumerate_cameras()
+    _print_device_table(devices)
     sys.exit(0)
 
 

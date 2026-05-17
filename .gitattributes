@@ -1,0 +1,46 @@
+# Darts Detector — Git line-ending policy
+# All text files use LF. Binary files are untouched.
+
+# Default: normalise all text files to LF on checkin.
+* text=auto eol=lf
+
+# Explicitly text
+*.py      text eol=lf
+*.md      text eol=lf
+*.yaml    text eol=lf
+*.yml     text eol=lf
+*.json    text eol=lf
+*.toml    text eol=lf
+*.txt     text eol=lf
+*.html    text eol=lf
+*.css     text eol=lf
+*.js      text eol=lf
+*.sh      text eol=lf
+*.cfg     text eol=lf
+*.ini     text eol=lf
+
+# Explicitly binary — never mangle these
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.eot     binary
+*.pdf     binary
+*.zip     binary
+*.gz      binary
+*.tar     binary
+*.mp4     binary
+*.avi     binary
+*.mov     binary
+
+# OpenCV / NumPy artefacts
+*.npy     binary
+*.npz     binary
+
+# Saved frame datasets (gitignored by default but listed here for safety)
+*.mjpeg   binary
+*.mjpg    binary
