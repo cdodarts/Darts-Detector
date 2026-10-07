@@ -12,9 +12,9 @@ Locked decisions ([DECISIONS.md](DECISIONS.md)) apply to every phase:
 
 | Group | Phases | Notes |
 | --- | --- | --- |
-| Sequential foundation | 0 → 1 → 1.5 | Cannot start coding until docs and decisions are locked. Phase 1.5 (camera tuning UI) follows camera picker. |
-| Parallel pair | 1.5 ∥ 2 | Camera tuning UI and camera settings/performance profiles may run side-by-side after Phase 1. |
-| Parallel pair | 2 ∥ 3 | Camera settings and manual calibration may run side-by-side after Phase 1.5. |
+| Sequential foundation | 0 → 1 | Cannot start coding until docs and decisions are locked. |
+| Parallel resilience | 1.6 ∥ 2 ∥ 2.5 | USB resilience (1.6) and camera mode selection (2) may run in parallel after Phase 1. Lens intrinsic calibration (2.5) may also start once cameras are configured. |
+| Sequential intrinsics gate | 2.5 → 3 | Phase 2.5 intrinsics must be complete before Phase 3 board calibration. |
 | Sequential calibration gate | 3 → 3.5 | Self-test must follow calibration. |
 | Parallel pair | 4 ∥ 4.5 | Scoring engine and frame recorder are independent. |
 | Sequential detection chain | 5 → 5.5 → 6 → 7 | Tightly coupled — run with shared replay dataset for fast iteration. |
@@ -64,75 +64,91 @@ For environments without a browser (headless Pi 5, SSH session), run `uv run pyt
 **Startup camera matching:**
 At startup, the capture module filters detected cameras by `friendlyName` first, then matches `devicePath` to assign roles `cam_1`, `cam_2`, `cam_3`.
 
-## Phase 1.5: Camera Tuning UI (Resolution, FPS, Exposure, White Balance, Gamma, And All Image Controls)
+## Phase 1.5: Camera Tuning UI — REMOVED / DEFERRED TO POST-MVP (2026-05-17)
 
-**Ordering constraint (D-020):** This phase MUST complete before Phase 3 (calibration). Image tuning sets the camera operating point that calibration captures. Calibration performed before tuning is unreliable and must be redone if tuning subsequently changes.
+**Status: REMOVED.** See `docs/DECISIONS.md D-021` for the full rationale and `docs/MASTER_PLAN.md` for the updated phase sequence.
 
-| Item | Detail |
-| --- | --- |
-| Objective | Provide a browser-based per-camera tuning UI where the user configures ALL image controls — not just resolution and FPS — sees a live preview reflecting changes immediately, views real-time diagnostics, and saves before proceeding to calibration. Ethos: this project serves DIY users with varied cameras and varied lighting; every parameter that affects detection must be user-controllable here. See `docs/PROJECT_ETHOS.md`. |
-| Inputs | `config/cameras.yaml` written by Phase 1 camera picker. |
-| Outputs | Updated `config/cameras.yaml` with all per-camera tuning settings; calibration marked stale if any tuning fingerprint field changes. |
-| Acceptance Criteria | See full deliverables checklist below. |
-| Smoke Test | With a connected camera: (1) open tuning UI, change resolution to 640×480 @ 15 FPS, click Apply, confirm live readout shows ~15 FPS and a "calibration will be invalidated" warning appears; (2) change back to 1280×720 @ 30 FPS, Apply, confirm ~30 FPS; (3) set manual exposure, observe live preview updates; (4) click "Save and proceed to calibration", confirm navigation to calibration page; (5) confirm `cameras.yaml` updated on disk. |
-| Common Failure Cases | Camera does not support requested resolution/FPS (fall back to nearest available and report it); live readout stalls if no frames arrive; calibration stale flag not set on resolution or tuning change; "Apply to all cameras" overwrites intentional per-camera differences silently. |
-| Files/modules likely involved | `src/darts_detector/ui/camera_tuning/`, `src/darts_detector/capture/`, `src/darts_detector/diagnostics/latency.py`, `src/darts_detector/config/camera_config.py`. |
-| Must Not Be Built Yet | Calibration UI (Phase 3), detection pipeline. |
-| UI Note | Must meet UX quality checklist in D-018: visible state, live feedback, plain-language errors, sensible defaults pre-filled, no required CLI step. LAN accessible. Mobile-responsive. |
+**Summary:** A browser-based camera tuning UI was built and then removed. Hardware variability across DIY user cameras makes a one-size-fits-all built-in tuning UI impractical at MVP. Users adjust their cameras using third-party tools (manufacturer utilities, Windows Camera Settings, OBS Virtual Camera, etc.). The architecture supports tuning settings via `cameras.yaml` fields (exposure, gain, brightness, contrast, whiteBalance, gamma, saturation, sharpness, backlightCompensation) which are applied in `Camera.open()` via `_apply_tuning()`. A future Phase 1.5 can layer a UI on top of this without changing any contract.
 
-### Phase 1.5 Deliverables Checklist
+**What was kept (foundational hooks):**
+- `cameras.yaml` schema retains all tunable fields — they are applied on `cap.open()` for power users who hand-edit the file.
+- `Camera._apply_tuning()` in `src/darts_detector/capture/camera.py` — reads config fields and applies via `cap.set()`. This is the hook a future tuning UI would call.
+- `src/darts_detector/capture/device_resolver.py` — kept; shared by Phase 1 smoke test.
+- `scripts/probe_exposure.py` — kept as a diagnostic tool for users who want to understand their hardware capabilities.
+- Calibration fingerprint mechanism (SHA-256 over tuning fields) — still required before calibration is confirmed; see `docs/CALIBRATION_SYSTEM.md`.
 
-**Per-camera control page:**
-- [ ] Per-camera page layout: one tab or section per camera role (Camera 1, Camera 2, Camera 3).
-- [ ] **Resolution** dropdown: canonical menu per D-019 (1920×1080, 1280×720, 800×600, 640×480). Default: 1280×720.
-- [ ] **FPS** dropdown: canonical menu per D-019 (60, 30, 25, 20, 15). Default: 30.
-- [ ] **Exposure** — toggle Auto / Manual. When Manual: integer value slider/input. Default: manual, value 100.
-- [ ] **Brightness** — integer slider/input. Default: 0.
-- [ ] **Contrast** — integer slider/input. Default: 0.
-- [ ] **Gamma** — integer slider/input. Default: not set (driver default). *(Note: not yet in Pydantic model — must be added in this phase; see `TODO-gamma` in `camera_config.py`.)*
-- [ ] **Gain** — integer slider/input. Default: 0.
-- [ ] **White Balance** — toggle Auto / Manual. When Manual: Kelvin value input. Default: manual, 4500K.
-- [ ] **Saturation** — integer slider/input. Default: not set. *(Reserved field — add to model in this phase.)*
-- [ ] **Sharpness** — integer slider/input. Default: not set. *(Reserved field — add to model in this phase.)*
-- [ ] **Backlight Compensation** — toggle On / Off. Default: Off. *(Reserved field — add to model in this phase.)*
-- [ ] **Rotation** — dropdown (0°, 90°, 180°, 270°). Default: 0°.
-- [ ] **Crop** — optional crop rectangle (x, y, width, height). Default: null (no crop).
+**What was deleted:**
+- `src/darts_detector/ui/camera_tuning/` (entire directory).
+- `src/darts_detector/cli/camera_tuning.py`.
+- `src/darts_detector/capture/property_ranges.py`.
+- `tests/smoke/test_phase1_5_tuning.py`.
+- `camera-tuning` pyproject.toml entry point.
+- `httpx` dev dependency (was added solely for Phase 1.5 tests).
 
-**Live preview and diagnostics:**
-- [ ] Live MJPEG preview per camera that reflects changes immediately on Apply (no page reload).
-- [ ] Live readout updated once per second: measured FPS, measured capture latency (ms), dropped frame count.
-- [ ] Exposure level indicator (reported effective exposure from driver if available).
+See the "Deferred / Polish Features" section at the end of this document for the deferred Phase 1.5 spec.
 
-**Controls and affordances:**
-- [ ] **Apply** button per camera — re-opens camera at new settings, refreshes live preview and readout.
-- [ ] **Reset to defaults** button per camera — restores defaults from `D-019` / project defaults without touching other cameras.
-- [ ] **Apply to all 3 cameras** affordance for shared settings — useful since all three darts cams typically share the same lighting environment. Must prompt confirmation before overwriting per-camera settings.
-- [ ] **Save and proceed to calibration** button — saves all tuning to `cameras.yaml`, then navigates to the calibration UI.
-  - If a prior calibration exists AND any tuning fingerprint field has changed: show warning "Saving will invalidate your existing calibration. You will need to recalibrate before scoring." with a Confirm / Cancel option.
-  - If no prior calibration exists: proceed without warning.
-
-**Calibration invalidation (D-020):**
-- [ ] Changing any tuning field that contributes to the calibration fingerprint sets a per-camera "calibration stale" flag visible in the UI.
-- [ ] The tuning fingerprint fields are: resolution, rotation, crop, exposure (mode + value), gain, brightness, contrast, white balance (mode + value), gamma, saturation, sharpness, backlight compensation.
-- [ ] FPS change does NOT invalidate calibration but IS saved to config.
-
-**Responsiveness and access:**
-- [ ] Mobile-responsive layout: stacks vertically on phone-sized screens. 44px minimum tap targets. 16px minimum font on inputs (prevents iOS auto-zoom).
-- [ ] LAN accessible at `http://<host>:8765/tuning` with `--host 0.0.0.0`.
-- [ ] Vanilla JS only — no npm, no build step (per D-018 checklist).
-
-## Phase 2: Camera Settings And Performance Profiles
+## Phase 1.6: USB Resilience and Camera Disconnect Recovery
 
 | Item | Detail |
 | --- | --- |
-| Objective | Apply and verify camera settings and runtime performance profiles. |
-| Inputs | Camera config, profile name, hardware capabilities. |
-| Outputs | Effective camera settings and profile status. |
-| Acceptance Criteria | Resolution, FPS, exposure, gain, brightness, contrast, white balance, rotation, and crop can be configured where supported. |
-| Smoke Test | Apply a low-latency profile and verify effective settings for all three cameras. |
-| Common Failure Cases | Driver ignores settings, auto exposure remains enabled, profile exceeds USB bandwidth, crop or rotation breaks calibration assumptions. |
-| Files/modules likely involved | `src/config/*`, `src/capture/*`, `config/*`. |
-| Must Not Be Built Yet | Automatic calibration, advanced debug UI, scoring logic. |
+| Objective | Detect camera disconnect, recover automatically, never crash the pipeline. |
+| Inputs | Live capture; simulated and real USB disconnect events. |
+| Outputs | Resilient capture layer; per-camera connection-state stream; clean degradation when a camera goes offline. |
+| Acceptance Criteria | Yanking a USB cable mid-test pauses the throw lifecycle, re-enumerates when the cable is reconnected, matches the same friendly-name + device-path, resumes capture within 5 s without restarting the process. Two failures within 10 s logs a degraded-mode event. |
+| Smoke Test | (1) Start capture with 3 cams. (2) Unplug cam_2. (3) Confirm system logs disconnect, throw lifecycle pauses (no false detections). (4) Plug back in. (5) Confirm resume within 5 s. |
+| Common Failure Cases | Stale device handle blocks reconnect, friendly-name collision when multiple identical cams reconnect in different order, Windows CamSvc holds dead handle, exception in capture thread kills whole process. |
+| Files/modules likely involved | `src/darts_detector/capture/multi_camera.py`, `src/darts_detector/capture/camera.py`, `src/darts_detector/lifecycle/` (for the pause hook). |
+| Must Not Be Built Yet | Calibration, detection, scoring. |
+
+Note: Phase 1.6 is cross-cutting and can run in parallel with Phase 2/2.5 development.
+
+## Phase 2: Camera Mode Selection (Resolution + FPS)
+
+| Item | Detail |
+| --- | --- |
+| Objective | Detect each camera's supported MJPG (resolution, fps) modes, compute the intersection across all 3 cameras, and let the user pick a single shared mode. Strip `_apply_tuning()` from `Camera.open()`. |
+| Inputs | Three assigned camera device indices from the Phase 1 picker. |
+| Outputs | `cameras.yaml` written with identical `resolution` and `fps` across all three entries. |
+| Acceptance Criteria | (1) `uv run camera-picker` flows: pick 3 cams → probe with progress bar → dropdowns show intersection → Save writes identical mode to all 3 cameras. (2) Phase 1 smoke test still passes. (3) Phase 2 smoke test passes. (4) `Camera.open()` does not apply exposure/gain/WB/etc. (5) Bandwidth advisory visible in UI when mode is risky. |
+| Smoke Test | `uv run pytest tests/smoke/test_phase2_mode_probe.py -v` — 15 unit tests (all mocked, no cameras required). |
+| Common Failure Cases | Camera refuses MJPG in probe (probe returns fallback 1280x720@30). No shared modes (picker falls back to 1280x720@30). Probe times out on slow drivers. |
+| Files/modules likely involved | `src/darts_detector/capture/mode_probe.py`, `src/darts_detector/ui/camera_picker/app.py`, `src/darts_detector/ui/camera_picker/templates/picker.html`, `src/darts_detector/ui/camera_picker/static/picker.js`, `src/darts_detector/ui/camera_picker/static/picker.css`, `src/darts_detector/capture/camera.py`, `tests/smoke/test_phase2_mode_probe.py`. |
+| Must Not Be Built Yet | Profiles, exposure/gain UI, auto white balance UI, rescan button, per-camera different settings. |
+
+**Locked constraints (Phase 2):**
+- **Resolution + FPS only.** Phase 2 does not touch exposure, gain, brightness, contrast, white balance, gamma, saturation, sharpness, backlight, rotation, or crop. Users adjust those via their own camera software (D-021).
+- **All 3 cameras run the same resolution and fps.** This is a hard constraint (D-022) enforced by the picker's intersection logic.
+- **MJPG only.** YUY2 is not offered in the mode picker.
+- **No new UI page.** The existing camera picker gains a Step 2 mode-selection panel.
+- **Minimum FPS = 15** (D-019 canonical menu floor: 60, 30, 25, 20, 15). Modes below 15 fps are filtered before intersection. Sub-25 fps shows a yellow accuracy advisory in the picker UI but is permitted (DIY ethos).
+
+**Probe implementation (two-tier):**
+- `src/darts_detector/capture/mode_probe.py` — `probe_supported_modes()` uses a two-tier strategy:
+  1. **Fast path (primary):** `query_supported_modes_fast()` reads the camera's native MJPG format list via pygrabber's DirectShow `IAMStreamConfig` wrapper (`FilterGraph.get_input_device().get_formats()`). Expected < 200 ms per camera. Returns `None` if pygrabber is unavailable or reports no MJPG modes.
+  2. **Brute-force fallback:** If the fast path returns `None`, `probe_supported_modes()` opens the camera via `cv2.VideoCapture` and tries 20 combinations (5 resolutions × 4 FPS values) using the double-FOURCC pattern. Readback must match within ±5% on FPS and exact on resolution. Takes ~30–90 s per camera on slow drivers.
+- Results cached to `config/.mode_cache.json` keyed by `friendly_name|device_path`.
+- Probe runs in a background thread. UI polls `/probe_status` every 500 ms and shows a progress bar (jumps to 100% instantly on fast path).
+- Once all 3 cameras are probed, `/intersection` returns the shared modes and the best default.
+
+**`_apply_tuning()` cleanup:**
+- `Camera.open()` no longer calls `self._apply_tuning()`.
+- Only `FOURCC` (MJPG), `WIDTH`, `HEIGHT`, `FPS` are applied via the double-FOURCC pattern.
+- `_apply_tuning()` method body retained as a forward-compatibility hook with a clear comment (D-021).
+
+## Phase 2.5: Lens Intrinsic Calibration (Chessboard)
+
+| Item | Detail |
+| --- | --- |
+| Objective | Remove lens distortion from each camera's image before any geometric reasoning. Cheap UVC cameras have measurable barrel distortion that pollutes homography fits if uncorrected. |
+| Inputs | Browser UI captures 10–20 frames of a printed chessboard at varied angles per camera. |
+| Outputs | One `camera-intrinsics-<cameraId>.json` per camera containing the 3×3 camera matrix K and 5-element distortion coefficients (k1, k2, p1, p2, k3). |
+| Acceptance Criteria | Mean reprojection error per camera after `cv2.calibrateCamera()` is below 0.5 pixels. All later capture frames pass through `cv2.undistort()` (or its remap-table equivalent) before reaching motion/detection/calibration code. |
+| Smoke Test | Print a 9×6 chessboard at known square size; capture 15 frames per camera at varied angles via the new browser UI; calibrate; verify reprojection error < 0.5 px; save profile; reload; project a known straight line through `undistort()` and verify it stays straight (sub-pixel). |
+| Common Failure Cases | Insufficient angle variation in captured frames, chessboard partially out of frame, blurry frames, lighting too low, board not flat. |
+| Files/modules likely involved | `src/darts_detector/calibration/intrinsics/`, `src/darts_detector/ui/intrinsic_picker/` (new browser UI), `schemas/camera-intrinsics.schema.json` (new), `config/calibration/intrinsics/`. |
+| Must Not Be Built Yet | Board (extrinsic) calibration — that is Phase 3. |
+
+Phase 3 manual board calibration consumes the Phase 2.5 intrinsics profile and applies `cv2.undistort()` to its frames before solving the homography.
 
 ## Phase 3: Manual Board Calibration
 
@@ -141,9 +157,9 @@ At startup, the capture module filters detected cameras by `friendlyName` first,
 | Objective | Allow a user to mark board reference points for all three camera views and save a calibration profile. |
 | Inputs | Live or captured frames, user-marked board points. |
 | Outputs | Versioned calibration profile (JSON) with camera-to-board transforms. |
-| Acceptance Criteria | Calibration can be saved, loaded, validated, and associated with camera settings. Output coordinates are in integer millimetres. |
-| Smoke Test | Mark required points for all cameras, save profile, reload it, and project board overlays back onto the views. |
-| Common Failure Cases | Ambiguous points, wrong segment orientation, resolution mismatch, camera moved after calibration. |
+| Acceptance Criteria | Calibration can be saved, loaded, validated, and associated with camera settings. Output coordinates are in integer millimetres. Homography fit uses RANSAC with ≥6 input point pairs (over-determined) and reports the inlier ratio and per-point reprojection error. Reject the calibration with a clear UI error if reprojection error exceeds 1 mm on any inlier point. Frames consumed by calibration are first passed through `cv2.undistort()` using the Phase 2.5 intrinsics profile. |
+| Smoke Test | Mark required points for all cameras, save profile, reload it, and project board overlays back onto the views. Click bull centre → after homography solve → project (0,0) board mm back to image → distance from clicked pixel < 1 mm-equivalent. |
+| Common Failure Cases | Ambiguous points, wrong segment orientation, resolution mismatch, camera moved after calibration. Phase 2.5 intrinsics missing — calibration must fail closed with a clear error pointing the user to run intrinsic calibration first. |
 | Files/modules likely involved | `src/darts_detector/calibration/manual/`, `config/calibration/`, `schemas/calibration-profile.schema.json`. |
 | Must Not Be Built Yet | Semi-automatic calibration, fully automatic calibration, dart detection. |
 
@@ -229,12 +245,12 @@ At startup, the capture module filters detected cameras by `friendlyName` first,
 
 | Item | Detail |
 | --- | --- |
-| Objective | Fuse per-camera candidates into a single board coordinate. |
+| Objective | Fuse per-camera tip + shaft-angle candidates into a single board coordinate, correcting for parallax (dart sticks out of board by 10–30 mm). |
 | Inputs | Per-camera candidates, calibration transforms, camera confidence. |
 | Outputs | Final coordinate, fused confidence, alternatives, and camera evidence. |
-| Acceptance Criteria | Fusion works with three usable cameras and degrades to two usable cameras when agreement is sufficient. |
+| Acceptance Criteria | Each camera independently projects from its detected tip back along the detected shaft direction to the calibrated board plane. The three plane-projected points are fused via RANSAC with outlier rejection. On a labelled replay set, median error < 3 mm; 99th-percentile error < 8 mm; degrades gracefully to 2-camera fusion if one camera disagrees. |
 | Smoke Test | Replay a saved throw with one camera disabled and verify two-camera fusion still produces a plausible coordinate or a clear rejection. |
-| Common Failure Cases | Calibration disagreement, occlusion, inconsistent camera timestamps, one camera dominating bad fusion. |
+| Common Failure Cases | Calibration disagreement, occlusion, inconsistent camera timestamps, one camera dominating bad fusion. Shaft direction unstable (e.g. dart in line with camera view) → fusion falls back to plane consensus for that camera with reduced confidence. |
 | Files/modules likely involved | `src/fusion/*`, `src/calibration/*`, `tests/fusion/*`. |
 | Must Not Be Built Yet | Public API changes beyond internal result structures, match-level features. |
 
@@ -310,9 +326,32 @@ At startup, the capture module filters detected cameras by `friendlyName` first,
 | --- | --- |
 | Objective | Measure and improve scoring reliability and speed against labelled data. |
 | Inputs | Labelled throw dataset, replay tooling, performance metrics. |
-| Outputs | Accuracy reports, latency reports, optimisation decisions. |
-| Acceptance Criteria | Reports include score accuracy, false positives, false negatives, confidence calibration, and latency percentiles. |
+| Outputs | Labelled dataset of ≥200 real throws at known mm coordinates; accuracy report per dataset run with mean/p50/p95/p99 error in mm; confusion matrix per segment; references D-023. |
+| Acceptance Criteria | Replay the full labelled dataset through the live pipeline path (not a separate replay path); per D-023, segment-correct rate ≥ 97% on non-borderline darts (tip > 2 mm from boundary); median error ≤ 3 mm; p99 ≤ 8 mm. Release-blocking if any of these regress. |
 | Smoke Test | Run the labelled replay dataset and generate a metrics summary. |
-| Common Failure Cases | Dataset too small, biased test throws, missing border cases, unmeasured hardware latency. |
+| Common Failure Cases | Dataset too small, biased test throws, missing border cases, unmeasured hardware latency. Replay path diverges from live path; dataset has unlabelled or mislabelled throws; lighting in dataset doesn't match production conditions. |
 | Files/modules likely involved | `tests/replay/*`, `datasets/*`, `tools/metrics/*`, `docs/accuracy/*`. |
 | Must Not Be Built Yet | Public accuracy claims not supported by measured data. |
+
+---
+
+## Deferred / Polish Features
+
+These items are explicitly out of scope for MVP. They may be implemented after a working detection and scoring pipeline exists.
+
+### Deferred Phase 1.5: Camera Tuning UI
+
+**Status:** Deferred post-MVP. See `D-021` in `docs/DECISIONS.md`.
+
+**Rationale:** Hardware variability across DIY user cameras makes a one-size-fits-all built-in tuning UI a never-ending support burden at MVP. Users have manufacturer utilities, Windows Camera Settings, OBS Virtual Camera, and similar tools for camera adjustment. We read whatever frames they hand us. The `cameras.yaml` schema already exposes all tunable fields (exposure, gain, brightness, contrast, whiteBalance, gamma, saturation, sharpness, backlightCompensation, rotation, crop, resolution, FPS); they are applied via `Camera._apply_tuning()` on `cap.open()`. Power users can hand-edit the file today. A future Phase 1.5 can add a browser UI on top of this hook without changing any contract.
+
+**Architecture hook preserved:** `Camera._apply_tuning()` in `src/darts_detector/capture/camera.py` reads tuning fields from `CameraEntry` config and applies them via `cap.set()`. This is the single point a future tuning UI would target. The Pydantic schema (`CameraEntry`) retains all tunable fields. The calibration fingerprint mechanism (SHA-256 over tuning fields) remains in effect — if cameras.yaml changes, calibration is invalidated regardless of whether a UI was used to make the change.
+
+**What to build when this is revisited:**
+- Browser UI at `/tuning` served by the existing FastAPI server.
+- Per-camera controls: exposure, gain/brightness, white balance lock.
+- Driver capability probe to hide non-functional controls (see `scripts/probe_exposure.py` for prior art).
+- Adaptive labelling for inverted-gain cameras (OV2710 DirectShow quirk documented in `scripts/probe_exposure.py`).
+- "Save and proceed to calibration" with fingerprint-change warning.
+- All controls hidden that the driver ignores, to avoid user confusion.
+- Must meet `D-018` UX quality checklist.

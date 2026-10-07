@@ -175,7 +175,7 @@ Format: lightweight ADR. Status values: `accepted`, `superseded`, `deprecated`.
 ## D-020: Image Tuning Precedes Calibration; Calibration Is Invalidated By Tuning Changes
 
 - **Date:** 2026-05-17
-- **Status:** accepted
+- **Status:** superseded by D-021 (tuning UI deferred). The calibration fingerprint requirement is retained and carried forward in D-021.
 - **Decision:** Per-camera image tuning — exposure, brightness, contrast, gain, gamma, white balance, saturation, sharpness, backlight compensation — MUST be configured and saved BEFORE calibration is performed. A calibration profile is only valid for the exact tuning settings it was captured under. If tuning changes after calibration, the calibration is invalidated.
 - **Why:** Calibration captures the geometric and photometric response of the camera at one operating point. Exposure affects where an edge appears in pixel space; white balance affects colour-channel weighting used by thresholds; gamma affects the apparent brightness of the board surface. A calibration captured at one tuning state is not reliable when the camera operates under different tuning. The sensor response is parameterised by tuning — calibration captures one operating point only.
 - **Consequences:**
@@ -187,6 +187,52 @@ Format: lightweight ADR. Status values: `accepted`, `superseded`, `deprecated`.
   - The Phase 1.5 tuning UI "Save and proceed to calibration" button must warn the user if a prior calibration exists and will be invalidated.
   - This applies to every tuning field that affects the camera image: resolution, rotation, crop, exposure, gain, brightness, contrast, white balance, gamma, saturation, sharpness, backlight compensation.
   - FPS does NOT invalidate calibration geometry (it is informational only), but IS recorded in the profile for diagnostics.
+
+## D-021: Camera Tuning UI Deferred To Post-MVP
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** A browser-based camera tuning UI is deferred until after the core detection and scoring pipeline is working. Users adjust their cameras using third-party tools (manufacturer utilities, Windows Camera Settings, OBS Virtual Camera, etc.). The `cameras.yaml` schema retains all tunable fields (exposure, gain, brightness, contrast, whiteBalance, gamma, saturation, sharpness, backlightCompensation, rotation, crop, resolution, FPS); they are applied via `Camera._apply_tuning()` in `Camera.open()` so power users who hand-edit the file get full effect. Phase ordering is now Phase 1 → Phase 2, with Phase 1.5 deferred.
+- **Why:** Hardware variability across DIY user cameras (different drivers, different OS backends, inverted controls, non-functional properties) makes a one-size-fits-all built-in tuning UI a never-ending support burden. The Autodarts DIY Cam (OV2710, DirectShow) alone required three rounds of iteration and the exposure control proved entirely non-functional. Users with varied hardware have their own tools; we should not duplicate them at MVP. The architecture already supports tuning via `cameras.yaml` and `_apply_tuning()`; a UI is a polish layer, not a core requirement.
+- **Calibration fingerprint retained:** Even without a tuning UI, the calibration fingerprint requirement stands. If `cameras.yaml` changes (any tuning field: resolution, rotation, crop, exposure, gain, brightness, contrast, whiteBalance, gamma, saturation, sharpness, backlightCompensation), calibration is invalidated. FPS does not invalidate calibration geometry. The fingerprint is SHA-256 over the same fields previously defined in D-020.
+- **Supersedes:** D-020 (the ordering constraint "tuning UI precedes calibration" is lifted; the fingerprint mechanism and the principle that calibration depends on tuning state are retained).
+- **Consequences:**
+  - `src/darts_detector/ui/camera_tuning/` deleted.
+  - `src/darts_detector/cli/camera_tuning.py` deleted.
+  - `src/darts_detector/capture/property_ranges.py` deleted.
+  - `tests/smoke/test_phase1_5_tuning.py` deleted.
+  - `camera-tuning` entry point removed from `pyproject.toml`.
+  - `httpx` dev dependency removed (was added solely for Phase 1.5 tests).
+  - `Camera._apply_tuning()`, `CameraEntry` tuning fields, `device_resolver.py`, and `scripts/probe_exposure.py` all retained as foundational hooks.
+  - Camera picker success page updated to direct users to their own camera software.
+  - Phase sequence in `PHASED_IMPLEMENTATION.md` updated: Phase 1 → Phase 2 (Phase 1.5 moved to Deferred section).
+  - `docs/MASTER_PLAN.md` locked decision for D-020 updated to reference D-021.
+
+## D-022: All Cameras Run Identical Resolution And FPS
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** All three cameras are configured with the same `resolution` (width × height) and the same `fps`. The camera picker enforces this by computing the intersection of MJPG modes supported by all three cameras and offering only that intersection in the dropdowns. The user picks one (resolution, fps) pair that applies to all three.
+- **Why:** Uniform resolution and FPS eliminates an entire class of multi-camera fusion bugs. Calibration assumes a fixed image geometry per camera; if cameras run at different resolutions, the per-pixel calibration transforms would need to be resolution-aware, adding complexity with no accuracy benefit. Detection timing is simplified when all cameras deliver frames at the same rate. Autodarts and comparable deterministic systems use identical settings across cameras.
+- **Consequences:**
+  - `Camera.open()` always receives the same resolution and FPS for all three cameras (enforced by the picker UI).
+  - `cameras.yaml` stores `resolution` and `fps` per camera entry — they must be identical across all three enabled entries after the picker runs.
+  - The picker UI computes the MJPG mode intersection and presents only shared modes. If no intersection exists, the picker falls back to 1280×720@30 as a safe default.
+  - Phase 2 mode probing (`mode_probe.py`) is MJPG-only. YUY2 is not probed or offered.
+  - Picker offers all canonical FPS values supported by the cameras (60, 30, 25, 20, 15). FPS below 25 displays an accuracy advisory to the user but is permitted (DIY ethos: adapt to user hardware). Modes below 15 fps are filtered out.
+
+## D-023: MVP Accuracy Target — 97–99% Segment-Correct on Non-Borderline Darts
+
+- **Date:** 2026-05-17
+- **Status:** accepted
+- **Decision:** MVP accuracy goal is 97–99% of darts scored to the correct segment when the dart tip is more than 2 mm from any segment boundary, measured against a labelled dataset of at least 200 real throws under controlled lighting. Borderline darts (tips within 2 mm of a ring/segment boundary) are out of MVP scope and may produce a "borderline / human review" event rather than a definitive score.
+- **Why:** 99% across all conditions (including borderlines) pushes into research territory and may require 4 cameras or AI-assisted detection — neither is in scope for MVP. 97–99% segment-correct on clean throws matches what Autodarts/Scolia achieve and is achievable with our planned pipeline (lens distortion correction + RANSAC homography + tip+shaft projection fusion). Accuracy must be *measured* on a labelled dataset, not asserted.
+- **Consequences:**
+  - Phase 12 accuracy report gates against this number; releases blocked if it drops.
+  - A labelled-throw dataset is a Phase 4.5 + Phase 12 deliverable (200+ throws minimum).
+  - The wire-format/dart event schema gains an optional `borderline: bool` field plus `alternateSegment` for close calls (additive — deferred to the Phase 4 contract-lock decision; not added now).
+  - All accuracy claims in README and marketing must reference this decision.
+- **Supersedes:** nothing. Defines a new contract.
 
 ---
 

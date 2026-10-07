@@ -44,6 +44,12 @@ class CropRect(BaseModel):
 
 CameraRole = Literal["cam_1", "cam_2", "cam_3"]
 
+# Allowed pixel format values. "MJPG" is the default — it uses H/W JPEG compression
+# inside the camera, cutting USB bandwidth by ~10x vs uncompressed YUY2 and allowing
+# three 1280×720@30 streams to coexist on a single USB controller (Phase 1 fix).
+PixelFormat = Literal["MJPG", "YUYV"]
+_ALLOWED_PIXEL_FORMATS: tuple[str, ...] = ("MJPG", "YUYV")
+
 
 class CameraEntry(BaseModel):
     cameraId: str
@@ -55,18 +61,25 @@ class CameraEntry(BaseModel):
     role: CameraRole
     resolution: CameraResolution = CameraResolution(width=1280, height=720)
     fps: int = Field(default=30, gt=0)  # D-019: default 30 FPS; was 60
+    # pixelFormat controls the FOURCC set on the capture device via CAP_PROP_FOURCC.
+    # "MJPG" (default) keeps USB bandwidth ~10x lower than "YUYV" (uncompressed YUY2),
+    # which is essential for three simultaneous 1280×720@30 streams on one USB bus.
+    # DSHOW requires FOURCC to be set BEFORE width/height/FPS.
+    pixelFormat: PixelFormat = "MJPG"
     exposure: ExposureConfig = ExposureConfig(mode="manual", value=100)
     gain: int = 0
     brightness: int = 0
     contrast: int = 0
     whiteBalance: WhiteBalanceConfig = WhiteBalanceConfig(mode="manual", value=4500)
+    # Phase 1.5 additions: extra image controls. All are Optional so older
+    # cameras.yaml files (without these fields) still load cleanly.
+    gamma: Optional[int] = None            # cv2.CAP_PROP_GAMMA; None = driver default
+    saturation: Optional[int] = None       # cv2.CAP_PROP_SATURATION; None = driver default
+    sharpness: Optional[int] = None        # cv2.CAP_PROP_SHARPNESS; None = driver default
+    backlightCompensation: bool = False    # cv2.CAP_PROP_BACKLIGHT
     rotation: int = Field(default=0, ge=0, lt=360)
     crop: Optional[CropRect] = None
     enabled: bool = True
-    # TODO-gamma: Add in Phase 1.5 — maps to cv2.CAP_PROP_GAMMA. Part of tuning fingerprint (D-020).
-    # TODO-saturation: Add in Phase 1.5 — maps to cv2.CAP_PROP_SATURATION. Part of tuning fingerprint.
-    # TODO-sharpness: Add in Phase 1.5 — maps to cv2.CAP_PROP_SHARPNESS. Part of tuning fingerprint.
-    # TODO-backlight: Add in Phase 1.5 — backlightCompensation bool, maps to cv2.CAP_PROP_BACKLIGHT. Part of tuning fingerprint.
 
     @field_validator("cameraId")
     @classmethod

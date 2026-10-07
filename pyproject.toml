@@ -19,11 +19,13 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pygrabber>=0.2",
     "comtypes>=1.4",
+    "reportlab>=4.5.1",
 ]
 
 [project.scripts]
 list-devices = "darts_detector.capture.list_devices:main"
 camera-picker = "darts_detector.cli.camera_picker:_cli"
+intrinsic-picker = "darts_detector.cli.intrinsic_picker:_cli"
 
 [project.optional-dependencies]
 dev = [
@@ -37,3 +39,9 @@ packages = ["src/darts_detector"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 timeout = 120
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+    "pytest-timeout>=2.1",
+]

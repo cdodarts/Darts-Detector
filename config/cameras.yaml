@@ -2,13 +2,14 @@ version: 1
 cameras:
 - cameraId: cam_1
   name: Camera 1
-  friendlyName: ACER HD User Facing
+  friendlyName: Autodarts DIY Cam
   devicePath: unavailable — run Device Manager
   role: cam_1
   resolution:
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1080
   fps: 30
+  pixelFormat: MJPG
   exposure:
     mode: manual
     value: 100
@@ -23,13 +24,14 @@ cameras:
   enabled: true
 - cameraId: cam_2
   name: Camera 2
-  friendlyName: ACER HD User Facing
+  friendlyName: Autodarts DIY Cam
   devicePath: unavailable — run Device Manager
   role: cam_2
   resolution:
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1080
   fps: 30
+  pixelFormat: MJPG
   exposure:
     mode: manual
     value: 100
@@ -44,13 +46,14 @@ cameras:
   enabled: true
 - cameraId: cam_3
   name: Camera 3
-  friendlyName: ACER HD User Facing
+  friendlyName: Autodarts DIY Cam
   devicePath: unavailable — run Device Manager
   role: cam_3
   resolution:
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1080
   fps: 30
+  pixelFormat: MJPG
   exposure:
     mode: manual
     value: 100

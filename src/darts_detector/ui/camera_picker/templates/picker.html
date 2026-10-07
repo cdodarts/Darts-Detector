@@ -35,68 +35,65 @@
         </tbody>
       </table>
 
+      {% if saved_width %}
       <p class="next-step">
-        You can close this tab. Run the smoke test to verify capture:
+        Mode: <strong>{{ saved_width }}&times;{{ saved_height }} @ {{ saved_fps }} fps MJPG</strong>
+        applied to all 3 cameras.
+      </p>
+      {% endif %}
+
+      <p class="next-step">
+        Adjust your camera settings (exposure, brightness, white balance, etc.)
+        using your camera's own software &mdash; manufacturer utility, Windows Camera Settings,
+        OBS Virtual Camera, or similar &mdash; if needed, then proceed to calibration (Phase 3).
+      </p>
+      <p class="next-step" style="margin-top:0.5rem">
+        Optionally verify capture:
       </p>
       <pre>uv run pytest tests/smoke/test_phase1_capture.py -v</pre>
     </section>
 
     {% else %}
     <!-- ------------------------------------------------------------------ -->
-    <!-- Picker state                                                         -->
+    <!-- Step 1: Camera assignment panel                                      -->
     <!-- ------------------------------------------------------------------ -->
+    <div id="step-assign">
 
-    {% if camera_count == 0 %}
-    <div class="banner banner-warn" role="alert">
-      No cameras detected. Check that all three cameras are plugged in, then
-      <a href="/">refresh this page</a>.
-    </div>
-    {% elif camera_count < 3 %}
-    <div class="banner banner-warn" role="alert">
-      Only {{ camera_count }} camera(s) found. Expected 3. Check USB connections,
-      then <a href="/">refresh this page</a>.
-    </div>
-    {% else %}
-    <div class="banner banner-ok" role="status">
-      {{ camera_count }} camera(s) detected. Assign each one to its physical
-      position, then click <strong>Save Configuration</strong>.
-    </div>
-    {% endif %}
+      {% if camera_count == 0 %}
+      <div class="banner banner-warn" role="alert">
+        No cameras detected. Check that all three cameras are plugged in, then
+        <a href="/">refresh this page</a>.
+      </div>
+      {% elif camera_count < 3 %}
+      <div class="banner banner-warn" role="alert">
+        Only {{ camera_count }} camera(s) found. Expected 3. Check USB connections,
+        then <a href="/">refresh this page</a>.
+      </div>
+      {% else %}
+      <div class="banner banner-ok" role="status">
+        {{ camera_count }} camera(s) detected. Assign each one to its physical
+        position, then click <strong>Select Mode</strong>.
+      </div>
+      {% endif %}
 
-    <p class="instructions">
-      Use the dropdown under each preview to select which camera is mounted
-      at that position. The preview updates automatically when you change
-      the selection.
-    </p>
+      <p class="instructions">
+        Use the dropdown under each preview to select which camera is mounted
+        at that position. The preview updates automatically when you change
+        the selection.
+      </p>
 
-    <form method="post" action="/save" id="picker-form">
       <div class="camera-grid">
 
         <!-- Camera 1 -->
         <div class="camera-card" id="card-1">
           <h2 class="role-label">Camera 1</h2>
           <div class="preview-wrapper">
-            <img
-              id="preview-1"
-              class="preview"
-              src="/preview/{{ default_1 }}"
-              alt="Camera 1 preview"
-            >
+            <img id="preview-1" class="preview" src="/preview/{{ default_1 }}" alt="Camera 1 preview">
           </div>
           <label for="cam_1" class="sr-only">Camera 1</label>
-          <select
-            id="cam_1"
-            name="cam_1"
-            class="cam-select"
-            data-preview-target="preview-1"
-            aria-label="Select Camera 1"
-          >
+          <select id="cam_1" name="cam_1" class="cam-select" data-preview-target="preview-1" aria-label="Select Camera 1">
             {% for cam in cameras %}
-            <option
-              value="{{ cam.index }}"
-              {% if cam.index == default_1 %}selected{% endif %}
-              {% if cam.is_darts_cam %}class="darts-cam"{% endif %}
-            >{{ cam.label }}{% if cam.is_darts_cam %} ★{% endif %}</option>
+            <option value="{{ cam.index }}" {% if cam.index == default_1 %}selected{% endif %} {% if cam.is_darts_cam %}class="darts-cam"{% endif %}>{{ cam.label }}{% if cam.is_darts_cam %} &#9733;{% endif %}</option>
             {% endfor %}
           </select>
         </div>
@@ -105,27 +102,12 @@
         <div class="camera-card" id="card-2">
           <h2 class="role-label">Camera 2</h2>
           <div class="preview-wrapper">
-            <img
-              id="preview-2"
-              class="preview"
-              src="/preview/{{ default_2 }}"
-              alt="Camera 2 preview"
-            >
+            <img id="preview-2" class="preview" src="/preview/{{ default_2 }}" alt="Camera 2 preview">
           </div>
           <label for="cam_2" class="sr-only">Camera 2</label>
-          <select
-            id="cam_2"
-            name="cam_2"
-            class="cam-select"
-            data-preview-target="preview-2"
-            aria-label="Select Camera 2"
-          >
+          <select id="cam_2" name="cam_2" class="cam-select" data-preview-target="preview-2" aria-label="Select Camera 2">
             {% for cam in cameras %}
-            <option
-              value="{{ cam.index }}"
-              {% if cam.index == default_2 %}selected{% endif %}
-              {% if cam.is_darts_cam %}class="darts-cam"{% endif %}
-            >{{ cam.label }}{% if cam.is_darts_cam %} ★{% endif %}</option>
+            <option value="{{ cam.index }}" {% if cam.index == default_2 %}selected{% endif %} {% if cam.is_darts_cam %}class="darts-cam"{% endif %}>{{ cam.label }}{% if cam.is_darts_cam %} &#9733;{% endif %}</option>
             {% endfor %}
           </select>
         </div>
@@ -134,27 +116,12 @@
         <div class="camera-card" id="card-3">
           <h2 class="role-label">Camera 3</h2>
           <div class="preview-wrapper">
-            <img
-              id="preview-3"
-              class="preview"
-              src="/preview/{{ default_3 }}"
-              alt="Camera 3 preview"
-            >
+            <img id="preview-3" class="preview" src="/preview/{{ default_3 }}" alt="Camera 3 preview">
           </div>
           <label for="cam_3" class="sr-only">Camera 3</label>
-          <select
-            id="cam_3"
-            name="cam_3"
-            class="cam-select"
-            data-preview-target="preview-3"
-            aria-label="Select Camera 3"
-          >
+          <select id="cam_3" name="cam_3" class="cam-select" data-preview-target="preview-3" aria-label="Select Camera 3">
             {% for cam in cameras %}
-            <option
-              value="{{ cam.index }}"
-              {% if cam.index == default_3 %}selected{% endif %}
-              {% if cam.is_darts_cam %}class="darts-cam"{% endif %}
-            >{{ cam.label }}{% if cam.is_darts_cam %} ★{% endif %}</option>
+            <option value="{{ cam.index }}" {% if cam.index == default_3 %}selected{% endif %} {% if cam.is_darts_cam %}class="darts-cam"{% endif %}>{{ cam.label }}{% if cam.is_darts_cam %} &#9733;{% endif %}</option>
             {% endfor %}
           </select>
         </div>
@@ -162,14 +129,91 @@
       </div><!-- .camera-grid -->
 
       <div class="actions">
-        <button type="submit" class="btn-save" id="save-btn">
-          Save Configuration
+        <button type="button" class="btn-save" id="probe-btn" onclick="startProbe()">
+          Select Mode
         </button>
         <p class="hint">
           Cameras marked with &#9733; are Autodarts DIY Cams.
         </p>
       </div>
-    </form>
+    </div><!-- #step-assign -->
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Step 2: Mode selection panel (shown after probe completes)           -->
+    <!-- ------------------------------------------------------------------ -->
+    <div id="step-mode" style="display:none;">
+
+      <div class="mode-panel">
+        <div class="mode-panel-header">
+          <h2>Step 2: Select Resolution &amp; Frame Rate</h2>
+          <p class="instructions">
+            All 3 cameras will run at the same resolution and frame rate.
+            Only modes supported by all 3 cameras are shown.
+          </p>
+        </div>
+
+        <!-- Selected cameras summary -->
+        <div class="selected-cameras-summary" id="selected-cameras-summary">
+          <!-- Filled by JS -->
+        </div>
+
+        <!-- Probe progress bar (shown during probing) -->
+        <div id="probe-progress-section">
+          <div class="probe-status-text" id="probe-status-text">
+            Reading supported modes from your cameras...
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-bar-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- Mode dropdowns (shown after probing) -->
+        <div id="mode-dropdowns" style="display:none;">
+
+          <div class="mode-row">
+            <label for="resolution-select" class="mode-label">Resolution</label>
+            <select id="resolution-select" class="mode-select" onchange="onResolutionChange()">
+              <!-- populated by JS -->
+            </select>
+          </div>
+
+          <div class="mode-row">
+            <label for="fps-select" class="mode-label">Frame rate</label>
+            <select id="fps-select" class="mode-select" onchange="onFpsChange()">
+              <!-- populated by JS -->
+            </select>
+          </div>
+
+          <p class="mode-info-note">
+            All 3 cameras will run at the selected resolution and frame rate.
+          </p>
+
+          <!-- FPS accuracy advisory (shown when fps < 25) -->
+          <p id="fps-advisory" class="fps-advisory" style="display:none;"></p>
+
+          <!-- Bandwidth advisory (shown conditionally) -->
+          <div id="bandwidth-advisory" class="bandwidth-advisory" style="display:none;"></div>
+
+        </div><!-- #mode-dropdowns -->
+
+        <!-- Save form (hidden inputs carry the final selection) -->
+        <form method="post" action="/save" id="save-form" style="display:none;">
+          <input type="hidden" name="cam_1" id="hidden-cam-1">
+          <input type="hidden" name="cam_2" id="hidden-cam-2">
+          <input type="hidden" name="cam_3" id="hidden-cam-3">
+          <input type="hidden" name="selected_width" id="hidden-width">
+          <input type="hidden" name="selected_height" id="hidden-height">
+          <input type="hidden" name="selected_fps" id="hidden-fps">
+
+          <div class="actions">
+            <button type="submit" class="btn-save" id="save-btn" disabled>
+              Save Configuration
+            </button>
+          </div>
+        </form>
+
+      </div><!-- .mode-panel -->
+    </div><!-- #step-mode -->
 
     {% endif %}
 

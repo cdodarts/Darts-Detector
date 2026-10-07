@@ -156,6 +156,20 @@ Expected behavior:
 
 Fusion should prefer a lower-confidence event or rejection over silently accepting inconsistent geometry.
 
+## Tip + Shaft Projection Fusion (Phase 7)
+
+A dart sticks out of the board by 10–30 mm. A camera viewing from an angle does not see the dart tip at the board surface — it sees the tip at the tip's actual 3D position, which is elevated above the board plane. Naively projecting the image tip coordinate through the homography gives a point displaced from the true landing position; this parallax error can reach 5–15 mm depending on camera angle and dart lean.
+
+**The correction:** Each camera detects both the tip position *and* the shaft direction (the line of the dart body) in image space. It then:
+1. Maps the detected tip to a 3D ray in camera space (using the calibrated intrinsics).
+2. Maps the detected shaft direction to a 3D ray.
+3. Follows the shaft direction from the tip backwards (in the direction of the dart body, toward the board) until it intersects the calibrated board plane.
+4. This intersection point is the plane-corrected landing coordinate for that camera, expressed in mm.
+
+The three plane-projected points (one per camera) are fused via RANSAC with outlier rejection. If one camera's shaft direction is unreliable (e.g. dart is nearly in line with that camera's view axis), its contribution is downweighted and the fusion falls back to plane consensus for that camera with reduced confidence.
+
+This approach is what allows the pipeline to meet the D-023 accuracy target of ≥ 97% segment-correct on non-borderline darts. Without shaft projection, multi-camera fusion accuracy is limited to ~5–15 mm; with it, median error targets < 3 mm (p99 < 8 mm). See Phase 7 in `docs/PHASED_IMPLEMENTATION.md` and risk R-26.
+
 ## Fallback When Only 2 Cameras Are Usable
 
 The system may score with two usable cameras when:

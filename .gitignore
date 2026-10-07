@@ -53,3 +53,7 @@ desktop.ini
 
 # Datasets (large binary data — not committed by default)
 datasets/throws/
+
+# Generated camera capability caches and exposure-probe photographs.
+config/.mode_cache.json
+scripts/probe_output/

@@ -2,18 +2,20 @@
 
 Calibration maps each camera view to dartboard coordinates. MVP calibration is manual by design because reliability matters more than automation during the first implementation.
 
-## Hard Rule: Image Tuning Must Precede Calibration (D-020)
+## Hard Rule: Calibration Is Invalidated By Tuning Changes (D-021, supersedes D-020)
 
 **Calibration is only valid for the exact camera tuning settings it was captured under.**
 
 Every image tuning parameter — exposure, brightness, contrast, gain, gamma, white balance, saturation, sharpness, backlight compensation, resolution, rotation, crop — affects the pixel-level appearance of the board. A calibration captured under one set of tuning settings is not reliable when the camera operates under different settings.
 
-**Ordering constraint (locked in `D-020`):**
+At MVP there is no built-in camera tuning UI (see D-021). Users adjust their cameras using third-party tools (manufacturer utilities, Windows Camera Settings, OBS Virtual Camera) and optionally hand-edit `cameras.yaml`. The tuning fields in `cameras.yaml` are applied via `Camera._apply_tuning()` on `cap.open()`.
+
+**Ordering guidance:**
 ```
-Phase 1 (camera selection) → Phase 1.5 (image tuning UI) → Phase 3 (calibration)
+Phase 1 (camera selection) → adjust cameras via own software → Phase 3 (calibration)
 ```
 
-Do not build or enter the calibration UI until Phase 1.5 image tuning is complete and saved.
+If `cameras.yaml` tuning fields change after calibration has been performed, recalibration is required.
 
 ### Calibration Tuning Fingerprint
 
@@ -34,12 +36,69 @@ At every entry point to the calibration UI and at runtime startup, the system mu
 
 The calibration page must show a per-camera status indicator: "Tuning matches calibration: Yes / No" with field-level detail where practical.
 
-### Phase 1.5 Tuning UI Integration
+### Tuning Change Detection At Calibration Time
 
-The Phase 1.5 image tuning UI "Save and proceed to calibration" button must:
-- Warn the user if an existing calibration profile is present and the tuning changes they made will invalidate it.
-- Allow the user to confirm the invalidation before proceeding.
+The calibration UI (Phase 3) must check the fingerprint on entry:
+- If `cameras.yaml` has changed since calibration was performed, display a prominent warning: "Camera settings have changed. Recalibrate before scoring."
+- Block scoring until the user recalibrates or restores the matching settings.
 - Mark the existing calibration profile as stale (not delete it — the user may want to restore settings).
+
+A future Phase 1.5 tuning UI, if built, should also warn the user when saving changes that will invalidate an existing calibration profile.
+
+## Intrinsics vs Extrinsics: Two-Phase Calibration (Phases 2.5 and 3)
+
+Calibration is split into two distinct phases that must be performed in order.
+
+### Phase 2.5: Lens Intrinsic Calibration (per camera)
+
+Each camera has its own lens that introduces barrel distortion. Cheap UVC cameras like the OV2710 have measurable distortion that, if uncorrected, pollutes any homography fit and caps calibration accuracy at 5–8 mm regardless of how many board points are marked.
+
+**Step-by-step user procedure:**
+
+1. **Print the chessboard.** Open `assets/chessboard_9x6_25mm.pdf` and print at 100% scale (no "fit to page"). Confirm with a ruler that one square = 25 mm. Mount on a rigid backing (clipboard or thick cardboard). Keep it flat — do not curve it.
+2. **Launch the calibration UI.** Run `uv run intrinsic-picker` (or `uv run intrinsic-picker --host 0.0.0.0` for phone/LAN access). Your browser opens at `http://127.0.0.1:8766`.
+3. **For each camera in turn:**
+   a. Watch the live preview. When you hold the chessboard in frame, green corner-detection dots appear over the inner corners.
+   b. Hold the board at different angles — tilt left, tilt right, near (30 cm), far (60 cm), rotated 30°, rotated 60°. Each capture position should differ visibly from the last.
+   c. Click **Capture** (or enable **Auto-capture** to capture automatically every 2 s when detection is stable and the angle differs by > 15° from the previous capture).
+   d. Aim for **15 frames** per camera. The thumbnail strip shows all captured frames; click × on a blurry or partial frame to remove it.
+   e. When you have at least 10 frames captured, click **Calibrate**.
+   f. If mean reprojection error ≤ 0.5 px: click **Save** — profile written to `config/calibration/intrinsics/<cameraId>.json`.
+   g. If mean reprojection error > 0.5 px: capture more frames at wider angle variation and click Calibrate again.
+4. **Repeat for all 3 cameras.** The UI shows a "All cameras calibrated" banner when all three are saved.
+5. **Verify.** Run `uv run pytest tests/smoke/test_phase2_5_intrinsic_calibration.py -v` — all tests should pass.
+
+**What the procedure computes:**
+- `cv2.calibrateCamera()` on the captured frames to find:
+  - The 3×3 camera matrix **K** (focal lengths `fx`, `fy` and principal point `cx`, `cy`).
+  - Five distortion coefficients `(k1, k2, p1, p2, k3)` for radial and tangential distortion.
+- Mean reprojection error across all calibration frames (acceptance threshold: < 0.5 px).
+- Result saved as `config/calibration/intrinsics/<cameraId>.json` (schema: `schemas/camera-intrinsics.schema.json`).
+
+**Undistort step:** All frames consumed by Phase 3 (board calibration), Phase 5 (motion detection), Phase 6 (tip candidate detection), and Phase 7 (fusion) MUST pass through `cv2.undistort()` (or the faster pre-computed remap table equivalent) using the Phase 2.5 profile before any geometric processing. This is a non-negotiable pipeline step once intrinsics are available.
+
+**Failure mode:** If Phase 2.5 has not been run or the profile has reprojection error > 0.5 px, Phase 3 must fail closed with a plain-language error pointing the user to run intrinsic calibration first. See risk R-25.
+
+### Phase 3: Board (Extrinsic) Calibration (per camera)
+
+Once lens distortion is corrected, Phase 3 maps each undistorted camera view to the board's integer mm coordinate system using a perspective homography.
+
+**Key requirements from Phase 2.5:**
+- The Phase 2.5 intrinsics profile must exist and have reprojection error < 0.5 px.
+- Frames used during Phase 3 point-marking must be passed through `cv2.undistort()` first.
+- The homography solve uses RANSAC with ≥6 input point pairs to produce an over-determined system. The inlier ratio and per-point reprojection error are reported in the profile. Calibration is rejected if any inlier point exceeds 1 mm reprojection error.
+
+**Relationship between phases:**
+
+```text
+Phase 2.5: chessboard → cv2.calibrateCamera() → K + distortion coeffs → camera-intrinsics-<id>.json
+                                                                                         │
+Phase 3:   live frame → cv2.undistort(frame, K, distortion) → mark board points → RANSAC homography → calibration-profile.json
+                                                                                         │
+Phase 5+:  every live frame → cv2.undistort() → motion / detection / fusion pipeline
+```
+
+See `schemas/camera-intrinsics.schema.json` for the intrinsics profile format. See `schemas/calibration-profile.schema.json` for the board calibration profile format (created in Phase 3). See D-023 for the accuracy target this two-phase approach is designed to achieve.
 
 ## Calibration Goals
 

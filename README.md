@@ -78,3 +78,21 @@ The smoke test captures for 30 seconds and asserts:
 - Measured FPS is within 5% of the configured target.
 - Per-frame capture latency is logged to a JSONL file.
 - At least 80% of frames are within the 50 ms capture budget (Pi 5 target).
+
+### 4. Calibrate lens distortion (Phase 2.5)
+
+Run lens calibration **once per camera** before board calibration. This corrects barrel distortion and is required for accurate homography in Phase 3.
+
+```
+uv run intrinsic-picker
+```
+
+Your browser opens at `http://127.0.0.1:8766`. For each camera:
+1. Hold a printed 9×6 chessboard (`assets/chessboard_9x6_25mm.pdf`, printed at 100% scale, mounted flat on a clipboard) in front of the camera.
+2. Click **Capture** 15 times at varied angles (tilt left, tilt right, near, far, rotate).
+3. Click **Calibrate** — verify mean reprojection error < 0.5 px.
+4. Click **Save**.
+
+Repeat for all 3 cameras. Profiles are written to `config/calibration/intrinsics/`.
+
+For LAN/phone access: `uv run intrinsic-picker --host 0.0.0.0`

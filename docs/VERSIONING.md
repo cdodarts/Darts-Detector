@@ -11,6 +11,7 @@ This is the authoritative document for backwards compatibility. Every breaking c
 | Application version | `pyproject.toml` `version` | `pyproject.toml` |
 | WebSocket / JSON event schema | `version` field on every event | [schemas/dart-event.schema.json](../schemas/dart-event.schema.json) |
 | Config file schema | `version` field at the top of every YAML config | `schemas/config.schema.json` (created in Phase 1) |
+| Camera intrinsics profile schema | `schemaVersion` field in the profile JSON | `schemas/camera-intrinsics.schema.json` (created in Phase 2.5) |
 | Calibration profile schema | `version` field in the profile JSON | `schemas/calibration-profile.schema.json` (created in Phase 3) |
 
 Plus the **Public Python API** which follows the *application version* but has additional deprecation rules below.

@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/darts-detector/camera-intrinsics.schema.json",
+  "title": "Camera Intrinsics Profile",
+  "description": "Per-camera lens intrinsics produced by Phase 2.5 chessboard calibration (cv2.calibrateCamera). Consumed by Phase 3 board calibration and by all pipeline stages that apply cv2.undistort(). See docs/CALIBRATION_SYSTEM.md and docs/DECISIONS.md D-023.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "cameraId",
+    "resolution",
+    "cameraMatrix",
+    "distortionCoefficients",
+    "meanReprojectionError",
+    "capturedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Semver version of this schema. Current: 1.0.0.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-.]+)?$"
+    },
+    "cameraId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Matches the camera role identifier in cameras.yaml (e.g. 'cam_1', 'cam_2', 'cam_3')."
+    },
+    "resolution": {
+      "type": "object",
+      "description": "Image resolution at which the intrinsics were calibrated. Intrinsics are invalid if the camera is operated at a different resolution.",
+      "required": ["w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "w": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Frame width in pixels."
+        },
+        "h": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Frame height in pixels."
+        }
+      }
+    },
+    "cameraMatrix": {
+      "type": "array",
+      "description": "3x3 camera matrix K flattened in row-major order: [fx, 0, cx, 0, fy, cy, 0, 0, 1]. Units: pixels.",
+      "items": { "type": "number" },
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "distortionCoefficients": {
+      "type": "array",
+      "description": "5-element distortion coefficient vector [k1, k2, p1, p2, k3] as returned by cv2.calibrateCamera.",
+      "items": { "type": "number" },
+      "minItems": 5,
+      "maxItems": 5
+    },
+    "meanReprojectionError": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Mean reprojection error in pixels across all calibration frames. Must be < 0.5 px for the profile to be accepted by Phase 3."
+    },
+    "capturedAt": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp when the intrinsics calibration was performed.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    }
+  }
+}

@@ -307,6 +307,167 @@ main {
   white-space: pre-wrap;
 }
 
+/* ============================================================
+   Phase 2 — Mode selection panel
+   ============================================================ */
+
+.mode-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  max-width: 640px;
+  margin: 0 auto 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.mode-panel-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+.selected-cameras-summary {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.65rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.selected-cam-item {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.selected-cam-item strong {
+  color: var(--text);
+}
+
+/* ---- Progress bar ---- */
+
+.probe-status-text {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.progress-bar-track {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* ---- Mode dropdowns ---- */
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mode-label {
+  flex: 0 0 120px;
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.mode-select {
+  flex: 1;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  appearance: auto;
+  min-height: 44px;
+}
+
+.mode-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.mode-info-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding-left: 0.25rem;
+  border-left: 3px solid var(--accent);
+  padding-left: 0.6rem;
+}
+
+/* ---- FPS accuracy advisory (shown when fps < 25) ---- */
+
+.fps-advisory {
+  font-size: 0.85rem;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  border-left: 4px solid var(--warn);
+  background: rgba(243, 156, 18, 0.12);
+  color: #fde8b4;
+  margin: 0;
+}
+
+/* ---- Bandwidth advisory ---- */
+
+.bandwidth-advisory {
+  font-size: 0.85rem;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  border-left: 4px solid transparent;
+}
+
+.bandwidth-advisory--warn {
+  background: rgba(243, 156, 18, 0.12);
+  border-left-color: var(--warn);
+  color: #fde8b4;
+}
+
+.bandwidth-advisory--error {
+  background: rgba(220, 53, 69, 0.12);
+  border-left-color: #dc3545;
+  color: #f5c6cb;
+}
+
+@media (max-width: 768px) {
+  .mode-panel {
+    padding: 1rem;
+    max-width: 100%;
+    margin: 0 0 1.5rem;
+  }
+
+  .mode-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .mode-label {
+    flex: none;
+    font-size: 0.85rem;
+  }
+}
+
 /* ---- Footer ---- */
 footer {
   border-top: 1px solid var(--border);

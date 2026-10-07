@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Darts Detector — Lens Calibration</title>
+  <link rel="stylesheet" href="/static/intrinsic.css" />
+</head>
+<body>
+  <header>
+    <h1>Darts Detector — Lens Intrinsic Calibration</h1>
+    <p class="phase-label">Phase 2.5</p>
+  </header>
+
+  <div class="tip-banner">
+    <strong>Tip:</strong> Print the chessboard from
+    <code>assets/chessboard_9x6_25mm.pdf</code>. Mount on a clipboard.
+    Hold it 30–60 cm from each camera. Vary the angle on every shot — tilt left,
+    tilt right, near, far, rotate. Aim for at least 15 frames per camera.
+  </div>
+
+  <div class="cameras-grid" id="cameras-grid">
+    {% for cam_id in camera_ids %}
+    <div class="camera-panel" id="panel-{{ cam_id }}">
+      <h2>{{ cam_id }}</h2>
+
+      <!-- Live preview -->
+      <div class="preview-wrap">
+        <img
+          class="preview-img"
+          id="preview-{{ cam_id }}"
+          src="/preview/{{ cam_id }}"
+          alt="Live preview — {{ cam_id }}"
+        />
+        <span class="corner-badge" id="badge-{{ cam_id }}"></span>
+      </div>
+
+      <!-- Progress / status -->
+      <div class="progress-row">
+        <span class="frame-count" id="count-{{ cam_id }}">0 frames</span>
+        <span class="cal-state" id="state-{{ cam_id }}">pending</span>
+      </div>
+      <div class="hint-text" id="hint-{{ cam_id }}">
+        Move the chessboard to a new angle, then click Capture.
+      </div>
+
+      <!-- Thumbnail strip -->
+      <div class="thumb-strip" id="strip-{{ cam_id }}"></div>
+
+      <!-- Auto-capture toggle -->
+      <label class="auto-label">
+        <input type="checkbox" id="auto-{{ cam_id }}" />
+        Auto-capture every 2 s when chessboard detected at a new angle
+      </label>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="btn btn-capture" onclick="captureFrame('{{ cam_id }}')">
+          Capture
+        </button>
+        <button class="btn btn-clear" onclick="clearFrames('{{ cam_id }}')">
+          Clear
+        </button>
+        <button class="btn btn-calibrate" id="btn-cal-{{ cam_id }}"
+                onclick="runCalibrate('{{ cam_id }}')" disabled>
+          Calibrate
+        </button>
+        <button class="btn btn-save" id="btn-save-{{ cam_id }}"
+                onclick="runSave('{{ cam_id }}')" disabled>
+          Save
+        </button>
+      </div>
+
+      <!-- Error display -->
+      <div class="error-box" id="err-{{ cam_id }}" style="display:none;"></div>
+
+      <!-- Reprojection error result -->
+      <div class="reproj-box" id="reproj-{{ cam_id }}" style="display:none;"></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- All-done banner (hidden until all 3 saved) -->
+  <div class="done-banner" id="done-banner" style="display:none;">
+    All 3 cameras calibrated and saved.
+    Proceed to Phase 3 — Board Calibration.
+  </div>
+
+  <script src="/static/intrinsic.js"></script>
+</body>
+</html>
